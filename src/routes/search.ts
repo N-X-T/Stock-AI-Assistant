@@ -1,7 +1,7 @@
 import express from 'express';
 import logger from '../utils/logger';
-import { BaseChatModel } from 'langchain/chat_models/base';
-import { Embeddings } from 'langchain/embeddings/base';
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { Embeddings } from '@langchain/core/embeddings';
 import { ChatOpenAI } from '@langchain/openai';
 import {
   getAvailableChatModelProviders,

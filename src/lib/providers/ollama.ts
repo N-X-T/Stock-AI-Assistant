@@ -1,7 +1,6 @@
-import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
 import { getOllamaApiEndpoint } from '../../config';
 import logger from '../../utils/logger';
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
+import { ChatOllama, OllamaEmbeddings } from '@langchain/ollama';
 
 export const loadOllamaChatModels = async () => {
   const ollamaEndpoint = getOllamaApiEndpoint();
