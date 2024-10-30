@@ -15,7 +15,7 @@ import React, {
 } from 'react';
 import ThemeSwitcher from './theme/Switcher';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { }
 
 const Input = ({ className, ...restProps }: InputProps) => {
   return (
@@ -62,6 +62,7 @@ interface SettingsType {
   };
   openaiApiKey: string;
   groqApiKey: string;
+  geminiApiKey: string;
   anthropicApiKey: string;
   ollamaApiUrl: string;
 }
@@ -271,30 +272,30 @@ const SettingsDialog = ({
                             options={(() => {
                               const chatModelProvider =
                                 config.chatModelProviders[
-                                  selectedChatModelProvider
+                                selectedChatModelProvider
                                 ];
 
                               return chatModelProvider
                                 ? chatModelProvider.length > 0
                                   ? chatModelProvider.map((model) => ({
-                                      value: model.name,
-                                      label: model.displayName,
-                                    }))
+                                    value: model.name,
+                                    label: model.displayName,
+                                  }))
                                   : [
-                                      {
-                                        value: '',
-                                        label: 'No models available',
-                                        disabled: true,
-                                      },
-                                    ]
-                                : [
                                     {
                                       value: '',
-                                      label:
-                                        'Invalid provider, please check backend logs',
+                                      label: 'No models available',
                                       disabled: true,
                                     },
-                                  ];
+                                  ]
+                                : [
+                                  {
+                                    value: '',
+                                    label:
+                                      'Invalid provider, please check backend logs',
+                                    disabled: true,
+                                  },
+                                ];
                             })()}
                           />
                         </div>
@@ -382,30 +383,30 @@ const SettingsDialog = ({
                           options={(() => {
                             const embeddingModelProvider =
                               config.embeddingModelProviders[
-                                selectedEmbeddingModelProvider
+                              selectedEmbeddingModelProvider
                               ];
 
                             return embeddingModelProvider
                               ? embeddingModelProvider.length > 0
                                 ? embeddingModelProvider.map((model) => ({
-                                    label: model.displayName,
-                                    value: model.name,
-                                  }))
+                                  label: model.displayName,
+                                  value: model.name,
+                                }))
                                 : [
-                                    {
-                                      label: 'No embedding models available',
-                                      value: '',
-                                      disabled: true,
-                                    },
-                                  ]
-                              : [
                                   {
-                                    label:
-                                      'Invalid provider, please check backend logs',
+                                    label: 'No embedding models available',
                                     value: '',
                                     disabled: true,
                                   },
-                                ];
+                                ]
+                              : [
+                                {
+                                  label:
+                                    'Invalid provider, please check backend logs',
+                                  value: '',
+                                  disabled: true,
+                                },
+                              ];
                           })()}
                         />
                       </div>
@@ -454,6 +455,22 @@ const SettingsDialog = ({
                           setConfig({
                             ...config,
                             groqApiKey: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-black/70 dark:text-white/70 text-sm">
+                        GEMINI API Key
+                      </p>
+                      <Input
+                        type="text"
+                        placeholder="GEMINI API Key"
+                        defaultValue={config.geminiApiKey}
+                        onChange={(e) =>
+                          setConfig({
+                            ...config,
+                            geminiApiKey: e.target.value,
                           })
                         }
                       />

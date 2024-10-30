@@ -9,6 +9,7 @@ import {
   getAnthropicApiKey,
   getOpenaiApiKey,
   updateConfig,
+  getGeminiApiKey,
 } from '../config';
 import logger from '../utils/logger';
 
@@ -52,6 +53,7 @@ router.get('/', async (_, res) => {
     config['ollamaApiUrl'] = getOllamaApiEndpoint();
     config['anthropicApiKey'] = getAnthropicApiKey();
     config['groqApiKey'] = getGroqApiKey();
+    config['geminiApiKey'] = getGeminiApiKey();
 
     res.status(200).json(config);
   } catch (err: any) {

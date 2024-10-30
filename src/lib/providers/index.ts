@@ -3,12 +3,14 @@ import { loadOllamaChatModels, loadOllamaEmbeddingsModels } from './ollama';
 import { loadOpenAIChatModels, loadOpenAIEmbeddingsModels } from './openai';
 import { loadAnthropicChatModels } from './anthropic';
 import { loadTransformersEmbeddingsModels } from './transformers';
+import { loadGeminiChatModels } from './gemini';
 
 const chatModelProviders = {
   openai: loadOpenAIChatModels,
   groq: loadGroqChatModels,
   ollama: loadOllamaChatModels,
   anthropic: loadAnthropicChatModels,
+  gemini: loadGeminiChatModels
 };
 
 const embeddingModelProviders = {

@@ -210,7 +210,6 @@ const loadMessages = async (
   chatId: string,
   setMessages: (messages: Message[]) => void,
   setIsMessagesLoaded: (loaded: boolean) => void,
-  setChatHistory: (history: [string, string][]) => void,
   setFocusMode: (mode: string) => void,
   setNotFound: (notFound: boolean) => void,
 ) => {
@@ -241,15 +240,10 @@ const loadMessages = async (
 
   setMessages(messages);
 
-  const history = messages.map((msg) => {
-    return [msg.role, msg.content];
-  }) as [string, string][];
-
   console.log('[DEBUG] messages loaded');
 
   document.title = messages[0].content;
 
-  setChatHistory(history);
   setFocusMode(data.chat.focusMode);
   setIsMessagesLoaded(true);
 };
@@ -274,10 +268,9 @@ const ChatWindow = ({ id }: { id?: string }) => {
   const [loading, setLoading] = useState(false);
   const [messageAppeared, setMessageAppeared] = useState(false);
 
-  const [chatHistory, setChatHistory] = useState<[string, string][]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
-  const [focusMode, setFocusMode] = useState('webSearch');
+  const [focusMode, setFocusMode] = useState('writingAssistant');
   const [optimizationMode, setOptimizationMode] = useState('speed');
 
   const [isMessagesLoaded, setIsMessagesLoaded] = useState(false);
@@ -295,7 +288,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
         chatId,
         setMessages,
         setIsMessagesLoaded,
-        setChatHistory,
         setFocusMode,
         setNotFound,
       );
@@ -348,7 +340,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
         },
         focusMode: focusMode,
         optimizationMode: optimizationMode,
-        history: [...chatHistory, ['human', message]],
       }),
     );
 
@@ -422,11 +413,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
       }
 
       if (data.type === 'messageEnd') {
-        setChatHistory((prevHistory) => [
-          ...prevHistory,
-          ['human', message],
-          ['assistant', recievedMessage],
-        ]);
 
         ws?.removeEventListener('message', messageHandler);
         setLoading(false);
@@ -463,9 +449,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
     const message = messages[index - 1];
 
     setMessages((prev) => {
-      return [...prev.slice(0, messages.length > 2 ? index - 1 : 0)];
-    });
-    setChatHistory((prev) => {
       return [...prev.slice(0, messages.length > 2 ? index - 1 : 0)];
     });
 

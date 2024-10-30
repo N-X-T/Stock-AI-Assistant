@@ -11,3 +11,9 @@
     display: none;
   }
 }
+
+.react-search-box-dropdown {
+  height: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}

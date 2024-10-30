@@ -1,3 +1,6 @@
+import { config } from 'dotenv'
+config();
+
 import { startWebSocketServer } from './websocket';
 import express from 'express';
 import cors from 'cors';
@@ -5,6 +8,12 @@ import http from 'http';
 import routes from './routes';
 import { getPort } from './config';
 import logger from './utils/logger';
+
+import cron from 'node-cron';
+import getFinancialAnalysis from './cronjob/FinancialAnalysis_TCB';
+import FinancialReport from './cronjob/PromptFinancial';
+import CalcPriceDynamics from './cronjob/Price_Dynamics_TCB';
+import PriceDynamicReport from './cronjob/PromptPrice';
 
 const port = getPort();
 
@@ -33,6 +42,19 @@ process.on('uncaughtException', (err, origin) => {
   logger.error(`Uncaught Exception at ${origin}: ${err}`);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+process.on('unhandledRejection', (reason: Error, promise) => {
+  if (reason.message !== "Aborted")
+    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+});
+
+cron.schedule('30 9 1 2,5,8,11 *', async () => {
+  console.log('Cronjob báo cáo tài chính hàng quý');
+  await getFinancialAnalysis();
+  await FinancialReport();
+});
+
+cron.schedule('30 9 1 * *', async () => {
+  console.log('Cronjob Lịch sử giá hàng tháng');
+  await CalcPriceDynamics();
+  await PriceDynamicReport();
 });

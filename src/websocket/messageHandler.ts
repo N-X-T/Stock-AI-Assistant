@@ -25,7 +25,6 @@ type WSMessage = {
   optimizationMode: string;
   type: string;
   focusMode: string;
-  history: Array<[string, string]>;
 };
 
 export const searchHandlers = {
@@ -117,17 +116,32 @@ export const handleMessage = async (
         }),
       );
 
-    const history: BaseMessage[] = parsedWSMessage.history.map((msg) => {
-      if (msg[0] === 'human') {
-        return new HumanMessage({
-          content: msg[1],
-        });
-      } else {
-        return new AIMessage({
-          content: msg[1],
-        });
-      }
-    });
+    // const history: BaseMessage[] = parsedWSMessage.history.map((msg) => {
+    //   if (msg[0] === 'human') {
+    //     return new HumanMessage({
+    //       content: msg[1],
+    //     });
+    //   } else {
+    //     return new AIMessage({
+    //       content: msg[1],
+    //     });
+    //   }
+    // });
+
+    const history: BaseMessage[] = (await db.query.messages.findMany({
+      where: eq(messages.chatId, parsedMessage.chatId),
+    }))//.sort((a, b) => new Date(JSON.parse(a.metadata).createdAt).getTime() - new Date(JSON.parse(b.metadata).createdAt).getTime())
+      .map((msg) => {
+        if (msg.role === 'user') {
+          return new HumanMessage({
+            content: msg.content,
+          });
+        } else {
+          return new AIMessage({
+            content: msg.content,
+          });
+        }
+      });
 
     if (parsedWSMessage.type === 'message') {
       const handler = searchHandlers[parsedWSMessage.focusMode];

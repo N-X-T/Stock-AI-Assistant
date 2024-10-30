@@ -13,6 +13,7 @@ interface Config {
     OPENAI: string;
     GROQ: string;
     ANTHROPIC: string;
+    GEMINI: string;
   };
   API_ENDPOINTS: {
     SEARXNG: string;
@@ -37,6 +38,8 @@ export const getSimilarityMeasure = () =>
 export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
 
 export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
+
+export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
 
 export const getAnthropicApiKey = () => loadConfig().API_KEYS.ANTHROPIC;
 

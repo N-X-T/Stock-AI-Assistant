@@ -2,8 +2,9 @@ import { BaseMessage } from '@langchain/core/messages';
 import {
   ChatPromptTemplate,
   MessagesPlaceholder,
+  PromptTemplate,
 } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
+import { RunnableLambda, RunnableMap, RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import type { StreamEvent } from '@langchain/core/tracers/log_stream';
 import eventEmitter from 'events';
@@ -11,13 +12,52 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
+import fs from 'fs/promises';
+import LineListOutputParser from '../lib/outputParsers/listLineOutputParser';
+import LineOutputParser from '../lib/outputParsers/lineOutputParser';
+import formatChatHistoryAsString from '../utils/formatHistory';
 
-const writingAssistantPrompt = `
-You are Perplexica, an AI model who is expert at searching the web and answering user's queries. You are currently set on focus mode 'Writing Assistant', this means you will be helping the user write a response to a given query. 
-Since you are a writing assistant, you would not perform web searches. If you think you lack information to answer the query, you can ask the user for more information or suggest them to switch to a different focus mode.
-`;
+const retriverPrompt = `Bạn sẽ được cung cấp một cuộc trò chuyện và một câu hỏi tiếp theo, bạn sẽ phải diễn đạt lại câu hỏi tiếp theo để nó trở thành một câu hỏi độc lập và có thể được LLM khác sử dụng để tìm kiếm thông tin để trả lời.
+Câu trả lời của bạn chỉ trả về theo định dạng sau:
+---
+<question>
+[Câu hỏi đã được diễn đạt lại thành một câu hỏi độc lập]
+</question>
+
+<type>
+[common/specific/no: "common" khi câu hỏi nhắc tới vấn đề tài chính, chứng khoán nói chung; "specific" khi nhắc tới một hoặc vài công ty/mã cổ phiếu cụ thể; "no" khi câu hỏi không thuộc phạm vi tài chính chứng khoán]
+</type>
+
+<ticker>
+[nếu không nhắc tới công ty/mã cổ phiếu nào thì không cần trả về thẻ <ticker>, trả về mã cổ phiếu của công ty được nhắc tới trong câu hỏi của người dùng, mỗi mã cổ phiếu trên một dòng]
+</ticker>
+---
+Bất kỳ nội dung nào bên dưới đều là một phần của cuộc trò chuyện thực tế và bạn cần sử dụng cuộc trò chuyện và câu hỏi tiếp theo để diễn đạt lại câu hỏi tiếp theo thành một câu hỏi độc lập dựa trên các hướng dẫn được chia sẻ ở trên.
+
+Lịch sử trò chuyện:
+{chat_history}
+
+Câu hỏi tiếp theo: {query}
+`
+
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng.
+Dưới đây là thông tin bổ sung về tình hình tài chính, chứng khoán giúp bạn trả lời câu hỏi của người dùng:
+{info}`
 
 const strParser = new StringOutputParser();
+
+const loadStock = async (ticker: string) => {
+  let BCTC = await fs.readFile(`./data/stock/${ticker}/summary/summary.txt`);
+  let PriceDynamics = await fs.readFile(`./data/stock/${ticker}/summaryDynamicPrice/summary.txt`);
+
+  return `${BCTC}\n\n${PriceDynamics}`;
+};
+
+const loadCommonMarket = async () => {
+  let common = await fs.readFile(`./data/stock/common/raw/summary.txt`);
+
+  return common;
+};
 
 const handleStream = async (
   stream: IterableReadableStream<StreamEvent>,
@@ -42,17 +82,85 @@ const handleStream = async (
   }
 };
 
-const createWritingAssistantChain = (llm: BaseChatModel) => {
+const createRetrieverChain = (llm: BaseChatModel) => {
   return RunnableSequence.from([
+    PromptTemplate.fromTemplate(retriverPrompt),
+    llm,
+    strParser,
+    async (input: string) => {
+      const questionOutputParser = new LineOutputParser({
+        key: 'question',
+      });
+
+      const typeOutputParser = new LineOutputParser({
+        key: 'type',
+      });
+
+      const tickersOutputParser = new LineListOutputParser({
+        key: 'ticker',
+      });
+
+      //const question = await questionOutputParser.parse(input);
+      const type = await typeOutputParser.parse(input);
+      const tickers = await tickersOutputParser.parse(input);
+
+      switch (type) {
+        case "no": return "";
+        case "specific": {
+          let stockInfo = "";
+          if (tickers.length > 0) {
+            for (let i in tickers) {
+              let infomation = await loadStock(tickers[i]);
+              stockInfo += infomation + "\n";
+            }
+          }
+          return stockInfo;
+        }
+        case "common": {
+          let commonInfo = await loadCommonMarket();
+          let stockInfo = "";
+          if (tickers.length > 0) {
+            for (let i in tickers) {
+              let infomation = await loadStock(tickers[i]);
+              stockInfo += infomation + "\n";
+            }
+          }
+          return `${commonInfo}\n\n${stockInfo}`;
+        }
+      }
+    }
+  ]);
+}
+
+type BasicChainInput = {
+  chat_history: BaseMessage[];
+  query: string;
+};
+
+const createStockChain = (llm: BaseChatModel) => {
+  const retrieverChain = createRetrieverChain(llm);
+
+  return RunnableSequence.from([
+    RunnableMap.from({
+      query: (input: BasicChainInput) => input.query,
+      chat_history: (input: BasicChainInput) => input.chat_history,
+      info: RunnableSequence.from([
+        (input) => ({
+          query: input.query,
+          chat_history: formatChatHistoryAsString(input.chat_history),
+        }),
+        retrieverChain
+      ]),
+    }),
     ChatPromptTemplate.fromMessages([
-      ['system', writingAssistantPrompt],
+      ['system', stockPrompt],
       new MessagesPlaceholder('chat_history'),
       ['user', '{query}'],
     ]),
     llm,
     strParser,
   ]).withConfig({
-    runName: 'FinalResponseGenerator',
+    runName: 'FinalResponseGenerator'
   });
 };
 
@@ -65,8 +173,8 @@ const handleWritingAssistant = (
   const emitter = new eventEmitter();
 
   try {
-    const writingAssistantChain = createWritingAssistantChain(llm);
-    const stream = writingAssistantChain.streamEvents(
+    const stockChain = createStockChain(llm);
+    const stream = stockChain.streamEvents(
       {
         chat_history: history,
         query: query,
