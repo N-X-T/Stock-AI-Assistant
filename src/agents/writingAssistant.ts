@@ -40,11 +40,23 @@ Lịch sử trò chuyện:
 Câu hỏi tiếp theo: {query}
 `
 
-const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng.
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và dữ liệu bổ sung bên giới để trả lời câu hỏi người dùng một cách tốt nhất.
 Dưới đây là thông tin bổ sung về tình hình tài chính, chứng khoán giúp bạn trả lời câu hỏi của người dùng:
 {info}`
 
+const suggestionsStockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ đưa ra quyết định mua/bán/giữ dựa trên dữ liệu tài chính của một công ty.
+Câu trả lời của bạn phải có định dạng sau:
+## Thời gian cập nhật dữ liệu: [Thời gian cập nhật]
+## Khuyến nghị: [Mua/Bán/Giữ]
+## Lý do: [Lý do đưa ra khuyến nghị dựa vào dữ liệu tài chính]
+
+Dưới đây là dữ liệu tài chính bổ sung về tình hình tài chính công ty:
+{info}
+`;
+
 const strParser = new StringOutputParser();
+
+let suggestions = [];
 
 const loadStock = async (ticker: string) => {
   let BCTC = await fs.readFile(`./data/stock/${ticker}/summary/summary.txt`);
@@ -54,8 +66,7 @@ const loadStock = async (ticker: string) => {
 };
 
 const loadCommonMarket = async () => {
-  let common = await fs.readFile(`./data/stock/common/raw/summary.txt`);
-
+  let common = await fs.readFile(`./data/common/all/summary.txt`);
   return common;
 };
 
@@ -77,7 +88,7 @@ const handleStream = async (
       event.event === 'on_chain_end' &&
       event.name === 'FinalResponseGenerator'
     ) {
-      emitter.emit('end');
+      emitter.emit('end', JSON.stringify(suggestions));
     }
   }
 };
@@ -105,11 +116,16 @@ const createRetrieverChain = (llm: BaseChatModel) => {
       const tickers = await tickersOutputParser.parse(input);
 
       switch (type) {
-        case "no": return "";
+        case "no": {
+          suggestions = [];
+          return "";
+        }
         case "specific": {
+          suggestions = [];
           let stockInfo = "";
           if (tickers.length > 0) {
             for (let i in tickers) {
+              suggestions.push(`Nên mua/bán/giữ cổ phiếu ${tickers[i]}?`);
               let infomation = await loadStock(tickers[i]);
               stockInfo += infomation + "\n";
             }
@@ -117,6 +133,7 @@ const createRetrieverChain = (llm: BaseChatModel) => {
           return stockInfo;
         }
         case "common": {
+          suggestions = [];
           let commonInfo = await loadCommonMarket();
           let stockInfo = "";
           if (tickers.length > 0) {
@@ -136,6 +153,26 @@ type BasicChainInput = {
   chat_history: BaseMessage[];
   query: string;
 };
+
+const createSuggestionsStockChain = (llm: BaseChatModel) => {
+  return RunnableSequence.from([
+    RunnableMap.from({
+      query: (input: BasicChainInput) => input.query,
+      info: async (input: BasicChainInput) => {
+        const ticker = [...input.query.matchAll(/Nên mua\/bán\/giữ cổ phiếu (.+?)\?/g)][0][1];
+        return await loadStock(ticker);
+      },
+    }),
+    ChatPromptTemplate.fromMessages([
+      ['system', suggestionsStockPrompt],
+      ['user', '{query}'],
+    ]),
+    llm,
+    strParser,
+  ]).withConfig({
+    runName: 'FinalResponseGenerator'
+  });;
+}
 
 const createStockChain = (llm: BaseChatModel) => {
   const retrieverChain = createRetrieverChain(llm);
@@ -173,7 +210,12 @@ const handleWritingAssistant = (
   const emitter = new eventEmitter();
 
   try {
-    const stockChain = createStockChain(llm);
+    let stockChain;
+    if (query.startsWith("Nên mua/bán/giữ cổ phiếu")) {
+      stockChain = createSuggestionsStockChain(llm);
+    } else {
+      stockChain = createStockChain(llm);
+    }
     const stream = stockChain.streamEvents(
       {
         chat_history: history,

@@ -4,7 +4,7 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import fs from 'fs/promises';
 import path from 'path';
-import { getGeminiApiKey } from '../config';
+import { getGeminiApiKey } from '../../config';
 
 const VN100List = ["AAA", "ACB", "ANV", "ASM", "BCG", "BCM", "BID", "BMP", "BSI", "BVH", "BWE", "CII", "CMG", "CRE", "CTD", "CTG", "CTR", "DBC", "DCM", "DGC", "DGW", "DIG", "DPM", "DXG", "DXS", "EIB", "EVF", "FPT", "FRT", "FTS", "GAS", "GEX", "GMD", "GVR", "HAG", "HCM", "HDB", "HDC", "HDG", "HHV", "HPG", "HSG", "HT1", "IMP", "KBC", "KDC", "KDH", "KOS", "LPB", "MBB", "MSB", "MSN", "MWG", "NKG", "NLG", "NT2", "NVL", "OCB", "PAN", "PC1", "PDR", "PHR", "PLX", "PNJ", "POW", "PPC", "PTB", "PVD", "PVT", "REE", "SAB", "SBT", "SCS", "SHB", "SIP", "SJS", "SSB", "SSI", "STB", "SZC", "TCB", "TCH", "TLG", "TPB", "VCB", "VCG", "VCI", "VGC", "VHC", "VHM", "VIB", "VIC", "VIX", "VJC", "VND", "VNM", "VPB", "VPI", "VRE", "VSH"];
 
@@ -14,6 +14,7 @@ const promptVN = `Bạn là một nhà phân tích tài chính dày dạn kinh n
 Vui lòng phân tích và đưa ra nhận xét súc tích và có thực tế, chỉ trích dẫn số liệu cần thiết, không trích dẫn tất cả(ví dụ: không trích dẫn bảng số liệu vào câu trả lời). Báo cáo của bạn phải bao gồm các phần sau:
 
 ---
+## Thời gian cập nhật
 
 ## Chỉ số hiệu suất cổ phiếu
 
@@ -55,6 +56,7 @@ Dữ liệu chỉ số VN100:
 Chỉ số lợi nhuận tích luỹ, tỉ số sharpe, mức giảm tối đa của cổ phiếu và các cổ phiếu cùng ngành:
 {dynamic_price}
 ---
+Hôm nay là ${new Date().toISOString()}
 `;
 
 const saveFile = async (content: string, symbol: string, fileName: string) => {
@@ -112,3 +114,5 @@ const GetAllSummary = async () => {
 }
 
 export default GetAllSummary;
+
+//GetAllSummary();

@@ -4,7 +4,7 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import fs from 'fs/promises';
 import path from 'path';
-import { getGeminiApiKey } from '../config';
+import { getGeminiApiKey } from '../../config';
 
 const loadJson = async (path: string): Promise<string> => {
     let content = await fs.readFile(path, { encoding: "utf-8" });
@@ -70,6 +70,9 @@ const promptVN = `Bạn là một nhà phân tích tài chính dày dạn kinh n
 
 Vui lòng cấu trúc phản hồi của bạn theo định dạng sau:
 
+## Thời gian cập nhật
+[Thời gian phân tích dữ liệu]
+
 ## Tổng quan về công ty
 [Cung cấp tổng quan ngắn gọn về công ty, hoạt động kinh doanh và ngành mà công ty đang hoạt động.]
 
@@ -117,6 +120,7 @@ Cash Flow
 Financial Ratio
 {financial_ratio}
 ---
+Hôm nay là ${new Date().toISOString()}
 `;
 
 const summary = async (symbol: string) => {
@@ -179,3 +183,5 @@ const GetAllSummary = async () => {
 }
 
 export default GetAllSummary;
+
+//GetAllSummary();

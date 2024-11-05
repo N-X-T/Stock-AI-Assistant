@@ -10,10 +10,10 @@ import { getPort } from './config';
 import logger from './utils/logger';
 
 import cron from 'node-cron';
-import getFinancialAnalysis from './cronjob/FinancialAnalysis_TCB';
-import FinancialReport from './cronjob/PromptFinancial';
-import CalcPriceDynamics from './cronjob/Price_Dynamics_TCB';
-import PriceDynamicReport from './cronjob/PromptPrice';
+import getFinancialAnalysis from './cronjob/stock/FinancialAnalysis_TCB';
+import FinancialReport from './cronjob/stock/PromptFinancial';
+import CalcPriceDynamics from './cronjob/stock/Price_Dynamics_TCB';
+import PriceDynamicReport from './cronjob/stock/PromptPrice';
 
 const port = getPort();
 

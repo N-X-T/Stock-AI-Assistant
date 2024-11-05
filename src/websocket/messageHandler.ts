@@ -67,8 +67,8 @@ const handleEmitterEvents = (
       sources = parsedData.data;
     }
   });
-  emitter.on('end', () => {
-    ws.send(JSON.stringify({ type: 'messageEnd', messageId: messageId }));
+  emitter.on('end', (suggestions) => {
+    ws.send(JSON.stringify({ type: 'messageEnd', messageId: messageId, suggestions: JSON.parse(suggestions) }));
 
     db.insert(messages)
       .values({

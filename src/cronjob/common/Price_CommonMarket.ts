@@ -1,14 +1,9 @@
 import fetch from "node-fetch";
 import fs from 'fs';
 import path from 'path';
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { getGeminiApiKey } from "../config";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { RunnableSequence } from "@langchain/core/runnables";
-import { StringOutputParser } from "@langchain/core/output_parsers";
 
 const saveFile = (content: string, symbol: string, fileName: string) => {
-    const filePath = path.resolve(`./data/stock/${symbol}/raw/${fileName}`);
+    const filePath = path.resolve(`./data/${symbol}/all/${fileName}`);
 
     fs.mkdir(path.dirname(filePath), { recursive: true }, (err) => {
         if (err) {
@@ -42,43 +37,14 @@ const industry_changne = async () => {
     for (let i in body.data) {
         body.data[i].industryName = industry.get(body.data[i].indexCode).vietnameseName;
         //body.data[i].tickerList = industry.get(body.data[i].indexCode).codeList;
-        delete body.data[i].indexCode;
     }
     const bodyText = JSON.stringify(body).replaceAll("indIndex", "industryIndex")
         .replaceAll("indChgCr", "industryChangeCurrent")
         .replaceAll("indChgPctCr", "industryChangePercentCurrent");
-    saveFile(bodyText, "common", "CommonMarket.txt");
-    return bodyText;
+    saveFile(bodyText, "common", "DynamicPrice.json");
 }
 
-const analysis = async () => {
-    const rawCommonMarket = await industry_changne();
+export default industry_changne;
 
-    const promptVN = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ tiến hành phân tích toàn diện về thị trường chứng khoán.
-Dưới đây là các dữ liệu biến động giá về các ngành trong thị trường:
-{raw}
+//industry_changne();
 
-Hôm nay là ${new Date().toISOString()}
-`;
-    const llm = new ChatGoogleGenerativeAI({
-        model: "gemini-1.5-flash",
-        apiKey: getGeminiApiKey(),
-        temperature: 0
-    });
-
-    const prompt = ChatPromptTemplate.fromTemplate(promptVN);
-
-    const chain = RunnableSequence.from([
-        prompt,
-        llm,
-        new StringOutputParser(),
-    ]);
-
-    const res = await chain.invoke({
-        raw: rawCommonMarket
-    });
-
-    saveFile(res, "common", "summary.txt");
-}
-
-analysis();

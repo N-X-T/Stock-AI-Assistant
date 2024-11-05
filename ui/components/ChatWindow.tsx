@@ -421,11 +421,13 @@ const ChatWindow = ({ id }: { id?: string }) => {
 
         if (
           lastMsg.role === 'assistant' &&
-          lastMsg.sources &&
-          lastMsg.sources.length > 0 &&
+          // lastMsg.sources &&
+          // lastMsg.sources.length > 0 &&
+          data.suggestions.length > 0 &&
           !lastMsg.suggestions
         ) {
-          const suggestions = await getSuggestions(messagesRef.current);
+          //const suggestions = await getSuggestions(messagesRef.current);
+          const suggestions = data.suggestions;
           setMessages((prev) =>
             prev.map((msg) => {
               if (msg.messageId === lastMsg.messageId) {
