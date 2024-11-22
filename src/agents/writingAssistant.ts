@@ -1,9 +1,9 @@
-import { BaseMessage } from '@langchain/core/messages';
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-  PromptTemplate,
-} from '@langchain/core/prompts';
+import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
+// import {
+//   ChatPromptTemplate,
+//   MessagesPlaceholder,
+//   PromptTemplate,
+// } from '@langchain/core/prompts';
 import { RunnableLambda, RunnableMap, RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import type { StreamEvent } from '@langchain/core/tracers/log_stream';
@@ -13,62 +13,329 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
 import fs from 'fs/promises';
-import LineListOutputParser from '../lib/outputParsers/listLineOutputParser';
-import LineOutputParser from '../lib/outputParsers/lineOutputParser';
-import formatChatHistoryAsString from '../utils/formatHistory';
+import { Chroma } from "@langchain/community/vectorstores/chroma";
+import { OllamaEmbeddings } from '@langchain/ollama';
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { GraphRecursionError } from "@langchain/langgraph";
+import moment from 'moment';
 
-const retriverPrompt = `Bạn sẽ được cung cấp một cuộc trò chuyện và một câu hỏi tiếp theo, bạn sẽ phải diễn đạt lại câu hỏi tiếp theo để nó trở thành một câu hỏi độc lập và có thể được LLM khác sử dụng để tìm kiếm thông tin để trả lời.
-Câu trả lời của bạn chỉ trả về theo định dạng sau:
----
-<question>
-[Câu hỏi đã được diễn đạt lại thành một câu hỏi độc lập]
-</question>
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng.`;
 
-<type>
-[common/specific/no: "common" khi câu hỏi nhắc tới vấn đề tài chính, chứng khoán nói chung; "specific" khi nhắc tới một hoặc vài công ty/mã cổ phiếu cụ thể; "no" khi câu hỏi không thuộc phạm vi tài chính chứng khoán]
-</type>
+const NewsTool = tool(
+  async ({ query, ticker, date }: { query: string, ticker: string, date?: string }) => {
+    const embeddings = new OllamaEmbeddings({
+      model: "hf.co/doof-ferb/halong-embedding-gguf:latest",
+    });
+    const vectorStore = new Chroma(embeddings, {
+      collectionName: "stocks_news",
+      url: "http://14.224.131.219:8505",
+      collectionMetadata: {
+        "hnsw:space": "cosine",
+      },
+    });
+    let filter;
 
-<ticker>
-[nếu không nhắc tới công ty/mã cổ phiếu nào thì không cần trả về thẻ <ticker>, trả về mã cổ phiếu của công ty được nhắc tới trong câu hỏi của người dùng, mỗi mã cổ phiếu trên một dòng]
-</ticker>
----
-Bất kỳ nội dung nào bên dưới đều là một phần của cuộc trò chuyện thực tế và bạn cần sử dụng cuộc trò chuyện và câu hỏi tiếp theo để diễn đạt lại câu hỏi tiếp theo thành một câu hỏi độc lập dựa trên các hướng dẫn được chia sẻ ở trên.
+    if (!date) {
+      filter = { symbol: ticker };
+    } else {
+      filter = { symbol: ticker, date: date };
+    }
 
-Lịch sử trò chuyện:
-{chat_history}
+    const similaritySearchResults = await vectorStore.similaritySearch(
+      query,
+      2,
+      filter
+    );
 
-Câu hỏi tiếp theo: {query}
-`
+    return similaritySearchResults.map(doc => doc.pageContent).join("\n\n");
+  },
+  {
+    name: "news_function",
+    description: "Truy xuất thông tin về tin tức liên quan tới một mã cổ phiếu cụ thể",
+    schema: z.object({
+      query: z.string().describe("Câu truy vấn tin tức"),
+      ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin tin tức"),
+      //date: z.string().optional().describe("Ngày của tin tức định dạng YYYY-MM-DD")
+    })
+  }
+);
 
-const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và dữ liệu bổ sung bên giới để trả lời câu hỏi người dùng một cách tốt nhất.
-Dưới đây là thông tin bổ sung về tình hình tài chính, chứng khoán giúp bạn trả lời câu hỏi của người dùng:
-{info}`
+// const PriceTool = tool(
+//   async ({ ticker }: { ticker: string }) => {
+//     let PriceDynamics = await fs.readFile(`./data/stock/${ticker}/summaryDynamicPrice/summary.txt`, "utf-8");
+//     return PriceDynamics;
+//   },
+//   {
+//     name: "price_function",
+//     description: "Lấy thông tin về biến động giá của một mã cổ phiếu cụ thể",
+//     schema: z.object({
+//       ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin")
+//     })
+//   }
+// );
 
-const suggestionsStockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ đưa ra quyết định mua/bán/giữ dựa trên dữ liệu tài chính của một công ty.
-Câu trả lời của bạn phải có định dạng sau:
-## Thời gian cập nhật dữ liệu: [Thời gian cập nhật]
-## Khuyến nghị: [Mua/Bán/Giữ]
-## Lý do: [Lý do đưa ra khuyến nghị dựa vào dữ liệu tài chính]
+// const FinancialAnalysisTool = tool(
+//   async ({ ticker }: { ticker: string }) => {
+//     // let BCTC = await fs.readFile(`./data/stock/${ticker}/summary/summary.txt`, "utf-8");
+//     // return BCTC;
+//     const pathh = `./data/stock/${ticker}/raw`;
 
-Dưới đây là dữ liệu tài chính bổ sung về tình hình tài chính công ty:
-{info}
-`;
+//     const overview = await fs.readFile(`${pathh}/overview.json`, { encoding: "utf-8" });
+//     const stock_ratio = await fs.readFile(`${pathh}/stockratio.json`, { encoding: "utf-8" });
+//     const industryAvg = await fs.readFile(`${pathh}/industryAvg.json`, { encoding: "utf-8" });
+//     const price_volatility = await fs.readFile(`${pathh}/price_volatility.json`, { encoding: "utf-8" });
+//     const balance_sheet = await fs.readFile(`${pathh}/balancesheet.json`, { encoding: "utf-8" });
+//     const cash_flow = await fs.readFile(`${pathh}/cashflow.json`, { encoding: "utf-8" });
+//     const income_statement = await fs.readFile(`${pathh}/incomestatement.json`, { encoding: "utf-8" });
+//     const financial_ratio = await fs.readFile(`${pathh}/financialratio.json`, { encoding: "utf-8" });
+
+//     return `---
+// Overview
+// ${overview}
+// ---
+// Stock ratio
+// ${stock_ratio}
+// ---
+// Industry Average
+// ${industryAvg}
+// ---
+// History Price
+// ${price_volatility}
+// ---
+// Balance Sheet
+// ${balance_sheet}
+// ---
+// Income Statement
+// ${income_statement}
+// ---
+// Cash Flow
+// ${cash_flow}
+// ---
+// Financial Ratio
+// ${financial_ratio}
+// ---`;
+//   },
+//   {
+//     name: "financial_function",
+//     description: "Lấy thông tin về báo cáo tài chính của một mã cổ phiếu cụ thể",
+//     schema: z.object({
+//       ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin")
+//     })
+//   }
+// );
+
+// const MacroEcomomicTool = tool(
+//   async ({ ticker }: { ticker: string }) => {
+//     return `Chưa có thông tin về kinh tế vĩ mô cho mã ${ticker}`;
+//   },
+//   {
+//     name: "macroEconomic_function",
+//     description: "Lấy thông tin về kinh tế vĩ mô liên quan một mã cổ phiếu cụ thể",
+//     schema: z.object({
+//       ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin")
+//     })
+//   }
+// );
+
+// const CommonInfoTool = tool(
+//   async () => {
+//     let common = await fs.readFile(`./data/common/all/summary.txt`, "utf-8");
+//     return common;
+//   },
+//   {
+//     name: "common_info_function",
+//     description: "Lấy thông tin chung về tình hình toàn thị trường chứng khoán",
+//   }
+// );
+
+const overview = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const overview = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/${ticker}/overview`);
+    return overview;
+  },
+  {
+    name: "overview_function",
+    description: "Truy xuất thông tin chung về một cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const stockratio = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const overview = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/${ticker}/stockratio`);
+    return overview;
+  },
+  {
+    name: "stock_ratio_function",
+    description: "Truy xuất chỉ số cổ phiếu của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const stock_same_industry = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const stock_same_ind = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/ticker/${ticker}/stock-same-ind`);
+    return stock_same_ind;
+  },
+  {
+    name: "stock_same_industry_function",
+    description: "Truy xuất thông tin một vài cổ phiếu nổi bật cùng ngành với một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const listTechnicalIndicator = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/data-charts/indicator?ticker=${ticker}`);
+    return res;
+  },
+  {
+    name: "list_technical_indicator_function",
+    description: "Truy xuất chỉ số kỹ thuật trong một tháng gần đây của một mã cổ phiếu cụ thể: sma5, sma20, macd, macdema, macdhist, ...",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const Fundamental_Technical_Analysis = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcbs-hfc-data/v1/ani/fundamental-analysis?ticker=${ticker}`);
+    return res;
+  },
+  {
+    name: "fundamental_technical_analysis_function",
+    description: "Truy xuất phân tích cơ bản và phân tích kỹ thuật của một mã cổ phiếu cụ thể trong quý gần nhất",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const dividend = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/company/${ticker}/dividend-payment-histories?page=0&size=500`);
+    return res;
+  },
+  {
+    name: "dividend_function",
+    description: "Truy xuất lịch sử trả cổ tức của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const incomestatement = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/${ticker}/incomestatement?yearly=0&isAll=false`);
+    return res;
+  },
+  {
+    name: "income_statement_function",
+    description: "Truy xuất kết quả kinh doanh/báo cáo thu nhập theo quý của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const balancesheet = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/${ticker}/balancesheet?yearly=0&isAll=false`);
+    return res;
+  },
+  {
+    name: "balance_sheet_function",
+    description: "Truy xuất kết quả bảng cân đối kế toán theo quý của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const cashflow = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/${ticker}/cashflow?yearly=0&isAll=false`);
+    return res;
+  },
+  {
+    name: "cashflow_function",
+    description: "Truy xuất lưu chuyển tiền tệ/dòng tiền theo quý của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const financialratio = tool(
+  async ({ ticker }: { ticker: string }) => {
+    const res = await get(`https://apipubaws.tcbs.com.vn/tcanalysis/v1/finance/${ticker}/financialratio?yearly=0&isAll=false`);
+    return res;
+  },
+  {
+    name: "financial_ratio_function",
+    description: "Truy xuất chỉ số tài chính theo quý của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu")
+    })
+  }
+);
+
+const priceTool = tool(
+  async ({ ticker, days }: { ticker: string, days?: number }) => {
+    const endHistoryDate = moment().unix();
+    const res = await get(`https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term?ticker=${ticker}&type=stock&resolution=D&to=${endHistoryDate}&countBack=${days ? days : 30}`);
+    return res;
+  },
+  {
+    name: "prices_function",
+    description: "Lấy lịch sử giá của một mã cổ phiếu cụ thể",
+    schema: z.object({
+      ticker: z.string().describe("Mã cổ phiếu"),
+      //days: z.number().optional().describe("Số ngày trong quá khứ muốn lấy lịch sử giá. Ví dụ: 30, 90,...")
+    })
+  }
+);
+
+//const tools = [NewsTool, PriceTool, FinancialAnalysisTool, MacroEcomomicTool, CommonInfoTool];
+
+const tools = [
+  NewsTool,
+  //overview,
+  stockratio,
+  stock_same_industry,
+  listTechnicalIndicator,
+  Fundamental_Technical_Analysis,
+  dividend,
+  incomestatement,
+  balancesheet,
+  cashflow,
+  financialratio,
+  priceTool
+];
+
+const RECURSION_LIMIT = 5 * 2 + 1; // RECURSION_LIMIT trong langgraph = số lần gọi tool * 2 + 1;
 
 const strParser = new StringOutputParser();
 
-let suggestions = [];
-
-const loadStock = async (ticker: string) => {
-  let BCTC = await fs.readFile(`./data/stock/${ticker}/summary/summary.txt`);
-  let PriceDynamics = await fs.readFile(`./data/stock/${ticker}/summaryDynamicPrice/summary.txt`);
-
-  return `${BCTC}\n\n${PriceDynamics}`;
-};
-
-const loadCommonMarket = async () => {
-  let common = await fs.readFile(`./data/common/all/summary.txt`);
-  return common;
-};
+const get = async (url: string) => {
+  try {
+    let res = await fetch(url);
+    let body = await res.json();
+    return JSON.stringify(body, (key, value) => (value === null ? undefined : value));
+  } catch {
+    return {};
+  }
+}
 
 const handleStream = async (
   stream: IterableReadableStream<StreamEvent>,
@@ -88,114 +355,91 @@ const handleStream = async (
       event.event === 'on_chain_end' &&
       event.name === 'FinalResponseGenerator'
     ) {
-      emitter.emit('end', JSON.stringify(suggestions));
+      // emitter.emit('end', JSON.stringify(suggestions));
+      emitter.emit('end', "[]");
     }
   }
 };
-
-const createRetrieverChain = (llm: BaseChatModel) => {
-  return RunnableSequence.from([
-    PromptTemplate.fromTemplate(retriverPrompt),
-    llm,
-    strParser,
-    async (input: string) => {
-      const questionOutputParser = new LineOutputParser({
-        key: 'question',
-      });
-
-      const typeOutputParser = new LineOutputParser({
-        key: 'type',
-      });
-
-      const tickersOutputParser = new LineListOutputParser({
-        key: 'ticker',
-      });
-
-      //const question = await questionOutputParser.parse(input);
-      const type = await typeOutputParser.parse(input);
-      const tickers = await tickersOutputParser.parse(input);
-
-      switch (type) {
-        case "no": {
-          suggestions = [];
-          return "";
-        }
-        case "specific": {
-          suggestions = [];
-          let stockInfo = "";
-          if (tickers.length > 0) {
-            for (let i in tickers) {
-              suggestions.push(`Nên mua/bán/giữ cổ phiếu ${tickers[i]}?`);
-              let infomation = await loadStock(tickers[i]);
-              stockInfo += infomation + "\n";
-            }
-          }
-          return stockInfo;
-        }
-        case "common": {
-          suggestions = [];
-          let commonInfo = await loadCommonMarket();
-          let stockInfo = "";
-          if (tickers.length > 0) {
-            for (let i in tickers) {
-              let infomation = await loadStock(tickers[i]);
-              stockInfo += infomation + "\n";
-            }
-          }
-          return `${commonInfo}\n\n${stockInfo}`;
-        }
-      }
-    }
-  ]);
-}
 
 type BasicChainInput = {
   chat_history: BaseMessage[];
   query: string;
 };
 
-const createSuggestionsStockChain = (llm: BaseChatModel) => {
-  return RunnableSequence.from([
-    RunnableMap.from({
-      query: (input: BasicChainInput) => input.query,
-      info: async (input: BasicChainInput) => {
-        const ticker = [...input.query.matchAll(/Nên mua\/bán\/giữ cổ phiếu (.+?)\?/g)][0][1];
-        return await loadStock(ticker);
-      },
-    }),
-    ChatPromptTemplate.fromMessages([
-      ['system', suggestionsStockPrompt],
-      ['user', '{query}'],
-    ]),
-    llm,
-    strParser,
-  ]).withConfig({
-    runName: 'FinalResponseGenerator'
-  });;
-}
-
 const createStockChain = (llm: BaseChatModel) => {
-  const retrieverChain = createRetrieverChain(llm);
-
-  return RunnableSequence.from([
-    RunnableMap.from({
-      query: (input: BasicChainInput) => input.query,
-      chat_history: (input: BasicChainInput) => input.chat_history,
-      info: RunnableSequence.from([
-        (input) => ({
-          query: input.query,
-          chat_history: formatChatHistoryAsString(input.chat_history),
-        }),
-        retrieverChain
-      ]),
-    }),
-    ChatPromptTemplate.fromMessages([
-      ['system', stockPrompt],
-      new MessagesPlaceholder('chat_history'),
-      ['user', '{query}'],
-    ]),
+  const app = createReactAgent({
     llm,
-    strParser,
+    tools,
+    messageModifier: stockPrompt
+  });
+
+  // return RunnableSequence.from([
+  //   RunnableMap.from({
+  //     chat_history: (input: BasicChainInput) => input.chat_history,
+  //     query: async (input: BasicChainInput) => {
+  //       const prompt = `Bạn là một chuyên gia tài chính, chứng khoán dày dạn kinh nghiệm. Nhiệm vụ của bạn là chỉ ra các bước thực hiện một cách ngắn gọn cho các tác vụ sau: ${input.query}`;
+  //       const CoT = await llm.invoke(prompt);
+  //       return `Thực hiện các bước sau sử dụng các default.API tôi đã cung cấp để lấy thông tin:\n${CoT.content}`;
+  //     }
+  //   }),
+  //   RunnableLambda.from(
+  //     async (input: BasicChainInput) => {
+  //       try {
+  //         const resp = await app.invoke(
+  //           {
+  //             messages: [
+  //               ...input.chat_history,
+  //               new HumanMessage(input.query)
+  //             ]
+  //           },
+  //           {
+  //             recursionLimit: RECURSION_LIMIT
+  //           }
+  //         );
+  //         return resp.messages[resp.messages.length - 1];
+  //       } catch (e) {
+  //         if (e instanceof GraphRecursionError) {
+  //           console.error(e.lc_error_code, `Query: ${input.query}`);
+  //           return new AIMessage("Hiện tại, tôi không đủ thông tin để trả lời câu hỏi của bạn!");
+  //         } else {
+  //           throw e;
+  //         }
+  //       }
+  //     }
+  //   ),
+  //   strParser
+  // ]).withConfig({
+  //   runName: 'FinalResponseGenerator'
+  // });
+
+  // Use mistral - large model
+  return RunnableSequence.from([
+    RunnableLambda.from(
+      async (input: BasicChainInput) => {
+        try {
+          const resp = await app.invoke(
+            {
+              messages: [
+                ...input.chat_history,
+                new HumanMessage(input.query)
+              ]
+            },
+            {
+              recursionLimit: RECURSION_LIMIT
+            }
+          );
+          return resp.messages[resp.messages.length - 1];
+        } catch (e) {
+          if (e instanceof GraphRecursionError) {
+            console.error(e.lc_error_code, `Query: ${input.query}`);
+            return new AIMessage("Hiện tại, tôi không đủ thông tin để trả lời câu hỏi của bạn!");
+          } else {
+            throw e;
+          }
+        }
+      }
+    ),
+    strParser
   ]).withConfig({
     runName: 'FinalResponseGenerator'
   });
@@ -210,12 +454,8 @@ const handleWritingAssistant = (
   const emitter = new eventEmitter();
 
   try {
-    let stockChain;
-    if (query.startsWith("Nên mua/bán/giữ cổ phiếu")) {
-      stockChain = createSuggestionsStockChain(llm);
-    } else {
-      stockChain = createStockChain(llm);
-    }
+    let stockChain = createStockChain(llm);
+
     const stream = stockChain.streamEvents(
       {
         chat_history: history,

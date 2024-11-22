@@ -18,6 +18,16 @@ export const loadGeminiChatModels = async () => {
                         temperature: 0
                     }
                 ),
+            },
+            'gemini-1.5-pro': {
+                displayName: 'gemini-1.5-pro',
+                model: new ChatGoogleGenerativeAI(
+                    {
+                        model: 'gemini-1.5-pro',
+                        apiKey: geminiApiKey,
+                        temperature: 0
+                    }
+                ),
             }
         };
 

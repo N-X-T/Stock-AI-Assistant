@@ -14,6 +14,7 @@ interface Config {
     GROQ: string;
     ANTHROPIC: string;
     GEMINI: string;
+    MISTRAL: string;
   };
   API_ENDPOINTS: {
     SEARXNG: string;
@@ -40,6 +41,8 @@ export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
 export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
 
 export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
+
+export const getMistralApiKey = () => loadConfig().API_KEYS.MISTRAL;
 
 export const getAnthropicApiKey = () => loadConfig().API_KEYS.ANTHROPIC;
 

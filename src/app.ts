@@ -43,8 +43,8 @@ process.on('uncaughtException', (err, origin) => {
 });
 
 process.on('unhandledRejection', (reason: Error, promise) => {
-  if (reason.message !== "Aborted")
-    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  console.trace();
+  //logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
 });
 
 cron.schedule('30 9 1 2,5,8,11 *', async () => {
