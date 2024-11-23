@@ -7,43 +7,26 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import { Chroma } from "@langchain/community/vectorstores/chroma";
-import { OllamaEmbeddings } from '@langchain/ollama';
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { GraphRecursionError } from "@langchain/langgraph";
 import moment from 'moment';
+import { getNewsEndpoint } from '../config';
 
-const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các function được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất`;
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các function được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất. Hôm nay là ${new Date().toISOString().substring(0, 10)}`;
 
 const NewsTool = tool(
   async ({ query, ticker, date }: { query: string, ticker: string, date?: string }) => {
-    const embeddings = new OllamaEmbeddings({
-      model: "hf.co/doof-ferb/halong-embedding-gguf:latest",
-    });
-    const vectorStore = new Chroma(embeddings, {
-      collectionName: "stocks_news",
-      url: "http://14.224.131.219:8505",
-      collectionMetadata: {
-        "hnsw:space": "cosine",
-      },
-    });
-    let filter;
-
-    if (!date) {
-      filter = { symbol: ticker };
-    } else {
-      filter = { symbol: ticker, date: date };
-    }
-
-    const similaritySearchResults = await vectorStore.similaritySearch(
-      query,
-      2,
-      filter
-    );
-
-    return similaritySearchResults.map(doc => doc.pageContent).join("\n\n");
+    const data = {
+      "query": query,
+      "top_k": 5,
+      "filter": {
+        "symbol": ticker
+      }
+    };
+    const news = await post(getNewsEndpoint(), JSON.stringify(data));
+    return news;
   },
   {
     name: "news_function",
@@ -234,6 +217,16 @@ const strParser = new StringOutputParser();
 const get = async (url: string) => {
   try {
     let res = await fetch(url);
+    let body = await res.json();
+    return JSON.stringify(body, (key, value) => (value === null ? undefined : value));
+  } catch {
+    return {};
+  }
+}
+
+const post = async (url: string, data: string) => {
+  try {
+    let res = await fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: data });
     let body = await res.json();
     return JSON.stringify(body, (key, value) => (value === null ? undefined : value));
   } catch {

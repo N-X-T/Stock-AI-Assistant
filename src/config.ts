@@ -13,3 +13,5 @@ export const getMistralApiKey = () => process.env.MISTRAL;
 export const getAnthropicApiKey = () => process.env.ANTHROPIC;
 
 export const getOllamaApiEndpoint = () => process.env.OLLAMA;
+
+export const getNewsEndpoint = () => process.env.NEWSURL;
