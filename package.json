@@ -25,7 +25,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
+    "@google/generative-ai": "^0.1.1",
     "@iarna/toml": "^2.2.5",
     "@langchain/anthropic": ">=0.3.0 <0.4.0",
     "@langchain/community": ">=0.3.0 <0.4.0",
