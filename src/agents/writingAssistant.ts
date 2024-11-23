@@ -26,7 +26,7 @@ const NewsTool = tool(
       }
     };
     const news = await post(getNewsEndpoint(), JSON.stringify(data));
-    return news;
+    return news.map(doc => doc.pageContent).join("\n\n");
   },
   {
     name: "news_function",
@@ -228,7 +228,7 @@ const post = async (url: string, data: string) => {
   try {
     let res = await fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: data });
     let body = await res.json();
-    return JSON.stringify(body, (key, value) => (value === null ? undefined : value));
+    return body;
   } catch {
     return {};
   }
