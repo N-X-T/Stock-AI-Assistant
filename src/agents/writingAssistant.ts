@@ -26,7 +26,7 @@ const NewsTool = tool(
       }
     };
     const news = await post(getNewsEndpoint(), JSON.stringify(data));
-    return news.map(doc => doc.pageContent).join("\n\n");
+    return news.map(doc => doc.page_content).join("\n\n");
   },
   {
     name: "news_function",
