@@ -9,12 +9,6 @@ import routes from './routes';
 import { getPort } from './config';
 import logger from './utils/logger';
 
-import cron from 'node-cron';
-import getFinancialAnalysis from './cronjob/stock/FinancialAnalysis_TCB';
-import FinancialReport from './cronjob/stock/PromptFinancial';
-import CalcPriceDynamics from './cronjob/stock/Price_Dynamics_TCB';
-import PriceDynamicReport from './cronjob/stock/PromptPrice';
-
 const port = getPort();
 
 const app = express();
@@ -43,18 +37,5 @@ process.on('uncaughtException', (err, origin) => {
 });
 
 process.on('unhandledRejection', (reason: Error, promise) => {
-  console.trace();
-  //logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
-});
-
-cron.schedule('30 9 1 2,5,8,11 *', async () => {
-  console.log('Cronjob báo cáo tài chính hàng quý');
-  await getFinancialAnalysis();
-  await FinancialReport();
-});
-
-cron.schedule('30 9 1 * *', async () => {
-  console.log('Cronjob Lịch sử giá hàng tháng');
-  await CalcPriceDynamics();
-  await PriceDynamicReport();
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
 });

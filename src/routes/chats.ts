@@ -1,7 +1,7 @@
 import express from 'express';
 import logger from '../utils/logger';
 import db from '../db/index';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { chats, messages } from '../db/schema';
 
 const router = express.Router();
@@ -30,7 +30,7 @@ router.get('/:id', async (req, res) => {
     }
 
     const chatMessages = await db.query.messages.findMany({
-      where: eq(messages.chatId, req.params.id),
+      where: and(eq(messages.chatId, req.params.id), eq(messages.isDelete, false)),
     });
 
     return res.status(200).json({ chat: chatExists, messages: chatMessages });

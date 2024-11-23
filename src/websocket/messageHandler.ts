@@ -1,17 +1,12 @@
 import { EventEmitter, WebSocket } from 'ws';
 import { BaseMessage, AIMessage, HumanMessage } from '@langchain/core/messages';
-import handleWebSearch from '../agents/webSearchAgent';
-import handleAcademicSearch from '../agents/academicSearchAgent';
 import handleWritingAssistant from '../agents/writingAssistant';
-import handleWolframAlphaSearch from '../agents/wolframAlphaSearchAgent';
-import handleYoutubeSearch from '../agents/youtubeSearchAgent';
-import handleRedditSearch from '../agents/redditSearchAgent';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
 import db from '../db';
 import { chats, messages } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 type Message = {
@@ -22,18 +17,7 @@ type Message = {
 
 type WSMessage = {
   message: Message;
-  optimizationMode: string;
   type: string;
-  focusMode: string;
-};
-
-export const searchHandlers = {
-  webSearch: handleWebSearch,
-  academicSearch: handleAcademicSearch,
-  writingAssistant: handleWritingAssistant,
-  wolframAlphaSearch: handleWolframAlphaSearch,
-  youtubeSearch: handleYoutubeSearch,
-  redditSearch: handleRedditSearch,
 };
 
 const handleEmitterEvents = (
@@ -67,8 +51,8 @@ const handleEmitterEvents = (
       sources = parsedData.data;
     }
   });
-  emitter.on('end', (suggestions) => {
-    ws.send(JSON.stringify({ type: 'messageEnd', messageId: messageId, suggestions: JSON.parse(suggestions) }));
+  emitter.on('end', () => {
+    ws.send(JSON.stringify({ type: 'messageEnd', messageId: messageId }));
 
     db.insert(messages)
       .values({
@@ -105,7 +89,7 @@ export const handleMessage = async (
     const parsedWSMessage = JSON.parse(message) as WSMessage;
     const parsedMessage = parsedWSMessage.message;
 
-    const id = crypto.randomBytes(7).toString('hex');
+    const id = parsedWSMessage.message.messageId ? parsedWSMessage.message.messageId : crypto.randomBytes(7).toString('hex');
 
     if (!parsedMessage.content)
       return ws.send(
@@ -116,84 +100,67 @@ export const handleMessage = async (
         }),
       );
 
-    // const history: BaseMessage[] = parsedWSMessage.history.map((msg) => {
-    //   if (msg[0] === 'human') {
-    //     return new HumanMessage({
-    //       content: msg[1],
-    //     });
-    //   } else {
-    //     return new AIMessage({
-    //       content: msg[1],
-    //     });
-    //   }
-    // });
-
-    const history: BaseMessage[] = (await db.query.messages.findMany({
-      where: eq(messages.chatId, parsedMessage.chatId),
-    }))//.sort((a, b) => new Date(JSON.parse(a.metadata).createdAt).getTime() - new Date(JSON.parse(b.metadata).createdAt).getTime())
-      .map((msg) => {
-        if (msg.role === 'user') {
-          return new HumanMessage({
-            content: msg.content,
-          });
-        } else {
-          return new AIMessage({
-            content: msg.content,
-          });
-        }
-      });
+    let historyDb = (await db.query.messages.findMany({
+      where: and(eq(messages.chatId, parsedMessage.chatId), eq(messages.isDelete, false)),
+    }));//.sort((a, b) => new Date(JSON.parse(a.metadata).createdAt).getTime() - new Date(JSON.parse(b.metadata).createdAt).getTime())
+    const index = historyDb.findIndex((msg) => msg.messageId === id);
+    if (index !== -1) {
+      const idsToDelete = historyDb.slice(index, historyDb.length).map(history => history.id);
+      for (let i in idsToDelete)
+        await db.update(messages)
+          .set({ isDelete: true })
+          .where(eq(messages.id, idsToDelete[i]));
+      historyDb = historyDb.slice(0, index);
+    }
+    const history: BaseMessage[] = historyDb.map((msg) => {
+      if (msg.role === 'user') {
+        return new HumanMessage({
+          content: msg.content,
+        });
+      } else {
+        return new AIMessage({
+          content: msg.content,
+        });
+      }
+    });
 
     if (parsedWSMessage.type === 'message') {
-      const handler = searchHandlers[parsedWSMessage.focusMode];
+      const emitter = handleWritingAssistant(
+        parsedMessage.content,
+        history,
+        llm,
+        embeddings
+      );
 
-      if (handler) {
-        const emitter = handler(
-          parsedMessage.content,
-          history,
-          llm,
-          embeddings,
-          parsedWSMessage.optimizationMode,
-        );
+      handleEmitterEvents(emitter, ws, id, parsedMessage.chatId);
 
-        handleEmitterEvents(emitter, ws, id, parsedMessage.chatId);
+      const chat = await db.query.chats.findFirst({
+        where: eq(chats.id, parsedMessage.chatId),
+      });
 
-        const chat = await db.query.chats.findFirst({
-          where: eq(chats.id, parsedMessage.chatId),
-        });
-
-        if (!chat) {
-          await db
-            .insert(chats)
-            .values({
-              id: parsedMessage.chatId,
-              title: parsedMessage.content,
-              createdAt: new Date().toString(),
-              focusMode: parsedWSMessage.focusMode,
-            })
-            .execute();
-        }
-
+      if (!chat) {
         await db
-          .insert(messages)
+          .insert(chats)
           .values({
-            content: parsedMessage.content,
-            chatId: parsedMessage.chatId,
-            messageId: id,
-            role: 'user',
-            metadata: JSON.stringify({
-              createdAt: new Date(),
-            }),
+            id: parsedMessage.chatId,
+            title: parsedMessage.content,
+            createdAt: new Date().toString(),
           })
           .execute();
-      } else {
-        ws.send(
-          JSON.stringify({
-            type: 'error',
-            data: 'Invalid focus mode',
-            key: 'INVALID_FOCUS_MODE',
-          }),
-        );
       }
+
+      await db
+        .insert(messages)
+        .values({
+          content: parsedMessage.content,
+          chatId: parsedMessage.chatId,
+          messageId: id,
+          role: 'user',
+          metadata: JSON.stringify({
+            createdAt: new Date(),
+          }),
+        })
+        .execute();
     }
   } catch (err) {
     ws.send(

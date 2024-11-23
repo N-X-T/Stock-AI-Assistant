@@ -1,79 +1,15 @@
-import fs from 'fs';
-import path from 'path';
-import toml from '@iarna/toml';
+export const getPort = () => process.env.PORT;
 
-const configFileName = 'config.toml';
+export const getSimilarityMeasure = () => process.env.SIMILARITY_MEASURE;
 
-interface Config {
-  GENERAL: {
-    PORT: number;
-    SIMILARITY_MEASURE: string;
-  };
-  API_KEYS: {
-    OPENAI: string;
-    GROQ: string;
-    ANTHROPIC: string;
-    GEMINI: string;
-    MISTRAL: string;
-  };
-  API_ENDPOINTS: {
-    SEARXNG: string;
-    OLLAMA: string;
-  };
-}
+export const getOpenaiApiKey = () => process.env.OPENAI;
 
-type RecursivePartial<T> = {
-  [P in keyof T]?: RecursivePartial<T[P]>;
-};
+export const getGroqApiKey = () => process.env.GROQ;
 
-const loadConfig = () =>
-  toml.parse(
-    fs.readFileSync(path.join(__dirname, `../${configFileName}`), 'utf-8'),
-  ) as any as Config;
+export const getGeminiApiKey = () => process.env.GEMINI;
 
-export const getPort = () => loadConfig().GENERAL.PORT;
+export const getMistralApiKey = () => process.env.MISTRAL;
 
-export const getSimilarityMeasure = () =>
-  loadConfig().GENERAL.SIMILARITY_MEASURE;
+export const getAnthropicApiKey = () => process.env.ANTHROPIC;
 
-export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
-
-export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
-
-export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI;
-
-export const getMistralApiKey = () => loadConfig().API_KEYS.MISTRAL;
-
-export const getAnthropicApiKey = () => loadConfig().API_KEYS.ANTHROPIC;
-
-export const getSearxngApiEndpoint = () =>
-  process.env.SEARXNG_API_URL || loadConfig().API_ENDPOINTS.SEARXNG;
-
-export const getOllamaApiEndpoint = () => loadConfig().API_ENDPOINTS.OLLAMA;
-
-export const updateConfig = (config: RecursivePartial<Config>) => {
-  const currentConfig = loadConfig();
-
-  for (const key in currentConfig) {
-    if (!config[key]) config[key] = {};
-
-    if (typeof currentConfig[key] === 'object' && currentConfig[key] !== null) {
-      for (const nestedKey in currentConfig[key]) {
-        if (
-          !config[key][nestedKey] &&
-          currentConfig[key][nestedKey] &&
-          config[key][nestedKey] !== ''
-        ) {
-          config[key][nestedKey] = currentConfig[key][nestedKey];
-        }
-      }
-    } else if (currentConfig[key] && config[key] !== '') {
-      config[key] = currentConfig[key];
-    }
-  }
-
-  fs.writeFileSync(
-    path.join(__dirname, `../${configFileName}`),
-    toml.stringify(config),
-  );
-};
+export const getOllamaApiEndpoint = () => process.env.OLLAMA;

@@ -210,7 +210,6 @@ const loadMessages = async (
   chatId: string,
   setMessages: (messages: Message[]) => void,
   setIsMessagesLoaded: (loaded: boolean) => void,
-  setFocusMode: (mode: string) => void,
   setNotFound: (notFound: boolean) => void,
 ) => {
   const res = await fetch(
@@ -244,7 +243,6 @@ const loadMessages = async (
 
   document.title = messages[0].content;
 
-  setFocusMode(data.chat.focusMode);
   setIsMessagesLoaded(true);
 };
 
@@ -270,9 +268,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
 
   const [messages, setMessages] = useState<Message[]>([]);
 
-  const [focusMode, setFocusMode] = useState('writingAssistant');
-  const [optimizationMode, setOptimizationMode] = useState('speed');
-
   const [isMessagesLoaded, setIsMessagesLoaded] = useState(false);
 
   const [notFound, setNotFound] = useState(false);
@@ -288,7 +283,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
         chatId,
         setMessages,
         setIsMessagesLoaded,
-        setFocusMode,
         setNotFound,
       );
     } else if (!chatId) {
@@ -320,7 +314,7 @@ const ChatWindow = ({ id }: { id?: string }) => {
     }
   }, [isMessagesLoaded, isWSReady]);
 
-  const sendMessage = async (message: string) => {
+  const sendMessage = async (message: string, messageIdRewrite?: string) => {
     if (loading) return;
     setLoading(true);
     setMessageAppeared(false);
@@ -329,17 +323,16 @@ const ChatWindow = ({ id }: { id?: string }) => {
     let recievedMessage = '';
     let added = false;
 
-    const messageId = crypto.randomBytes(7).toString('hex');
+    const messageId = messageIdRewrite ? messageIdRewrite : crypto.randomBytes(7).toString('hex');
 
     ws?.send(
       JSON.stringify({
         type: 'message',
         message: {
           chatId: chatId!,
+          messageId: messageId,
           content: message,
-        },
-        focusMode: focusMode,
-        optimizationMode: optimizationMode,
+        }
       }),
     );
 
@@ -417,26 +410,26 @@ const ChatWindow = ({ id }: { id?: string }) => {
         ws?.removeEventListener('message', messageHandler);
         setLoading(false);
 
-        const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+        // const lastMsg = messagesRef.current[messagesRef.current.length - 1];
 
-        if (
-          lastMsg.role === 'assistant' &&
-          // lastMsg.sources &&
-          // lastMsg.sources.length > 0 &&
-          data.suggestions.length > 0 &&
-          !lastMsg.suggestions
-        ) {
-          //const suggestions = await getSuggestions(messagesRef.current);
-          const suggestions = data.suggestions;
-          setMessages((prev) =>
-            prev.map((msg) => {
-              if (msg.messageId === lastMsg.messageId) {
-                return { ...msg, suggestions: suggestions };
-              }
-              return msg;
-            }),
-          );
-        }
+        // if (
+        //   lastMsg.role === 'assistant' &&
+        //   // lastMsg.sources &&
+        //   // lastMsg.sources.length > 0 &&
+        //   data.suggestions.length > 0 &&
+        //   !lastMsg.suggestions
+        // ) {
+        //   //const suggestions = await getSuggestions(messagesRef.current);
+        //   const suggestions = data.suggestions;
+        //   setMessages((prev) =>
+        //     prev.map((msg) => {
+        //       if (msg.messageId === lastMsg.messageId) {
+        //         return { ...msg, suggestions: suggestions };
+        //       }
+        //       return msg;
+        //     }),
+        //   );
+        // }
       }
     };
 
@@ -448,13 +441,13 @@ const ChatWindow = ({ id }: { id?: string }) => {
 
     if (index === -1) return;
 
-    const message = messages[index - 1];
+    const message = messages[index];
 
     setMessages((prev) => {
-      return [...prev.slice(0, messages.length > 2 ? index - 1 : 0)];
+      return [...prev.slice(0, index)];
     });
 
-    sendMessage(message.content);
+    sendMessage(message.content, messageId);
   };
 
   useEffect(() => {
@@ -493,10 +486,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
         ) : (
           <EmptyChat
             sendMessage={sendMessage}
-            focusMode={focusMode}
-            setFocusMode={setFocusMode}
-            optimizationMode={optimizationMode}
-            setOptimizationMode={setOptimizationMode}
           />
         )}
       </div>

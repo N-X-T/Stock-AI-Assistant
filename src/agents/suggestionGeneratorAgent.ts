@@ -7,19 +7,19 @@ import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatOpenAI } from '@langchain/openai';
 
 const suggestionGeneratorPrompt = `
-You are an AI suggestion generator for an AI powered search engine. You will be given a conversation below. You need to generate 4-5 suggestions based on the conversation. The suggestion should be relevant to the conversation that can be used by the user to ask the chat model for more information.
-You need to make sure the suggestions are relevant to the conversation and are helpful to the user. Keep a note that the user might use these suggestions to ask a chat model for more information. 
-Make sure the suggestions are medium in length and are informative and relevant to the conversation.
+Bạn là trình tạo gợi ý AI gợi ý các câu hỏi tiếp theo. Bạn sẽ được cung cấp một cuộc trò chuyện bên dưới. Bạn cần tạo 4-5 gợi ý dựa trên cuộc trò chuyện.
+Bạn cần đảm bảo các gợi ý có liên quan đến cuộc trò chuyện và hữu ích cho người dùng. Lưu ý rằng người dùng có thể sử dụng các gợi ý này để yêu cầu mô hình trò chuyện cung cấp thêm thông tin.
+Đảm bảo các gợi ý có độ dài trung bình, mang tính thông tin và có liên quan đến cuộc trò chuyện.
 
-Provide these suggestions separated by newlines between the XML tags <suggestions> and </suggestions>. For example:
+Cung cấp các gợi ý này được phân tách bằng dòng mới giữa các thẻ XML <suggestions> và </suggestions>. Ví dụ:
 
 <suggestions>
-Tell me more about SpaceX and their recent projects
-What is the latest news on SpaceX?
-Who is the CEO of SpaceX?
+Hãy cho tôi biết thêm về SpaceX và các dự án gần đây của họ
+Tin tức mới nhất về SpaceX là gì?
+Ai là CEO của SpaceX?
 </suggestions>
 
-Conversation:
+Cuộc trò chuyện:
 {chat_history}
 `;
 

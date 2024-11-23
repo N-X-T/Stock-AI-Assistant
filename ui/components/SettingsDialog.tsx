@@ -60,11 +60,6 @@ interface SettingsType {
   embeddingModelProviders: {
     [key: string]: [Record<string, any>];
   };
-  openaiApiKey: string;
-  groqApiKey: string;
-  geminiApiKey: string;
-  anthropicApiKey: string;
-  ollamaApiUrl: string;
 }
 
 const SettingsDialog = ({
@@ -411,86 +406,6 @@ const SettingsDialog = ({
                         />
                       </div>
                     )}
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-black/70 dark:text-white/70 text-sm">
-                        OpenAI API Key
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="OpenAI API Key"
-                        defaultValue={config.openaiApiKey}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            openaiApiKey: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-black/70 dark:text-white/70 text-sm">
-                        Ollama API URL
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="Ollama API URL"
-                        defaultValue={config.ollamaApiUrl}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            ollamaApiUrl: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-black/70 dark:text-white/70 text-sm">
-                        GROQ API Key
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="GROQ API Key"
-                        defaultValue={config.groqApiKey}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            groqApiKey: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-black/70 dark:text-white/70 text-sm">
-                        GEMINI API Key
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="GEMINI API Key"
-                        defaultValue={config.geminiApiKey}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            geminiApiKey: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-black/70 dark:text-white/70 text-sm">
-                        Anthropic API Key
-                      </p>
-                      <Input
-                        type="text"
-                        placeholder="Anthropic API key"
-                        defaultValue={config.anthropicApiKey}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            anthropicApiKey: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
                   </div>
                 )}
                 {isLoading && (

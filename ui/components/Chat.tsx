@@ -53,12 +53,11 @@ const Chat = ({
         const isLast = i === messages.length - 1;
 
         return (
-          <Fragment key={msg.messageId}>
+          <Fragment key={`${msg.messageId}_${msg.role}`}>
             <MessageBox
               key={i}
               message={msg}
               messageIndex={i}
-              history={messages}
               loading={loading}
               dividerRef={isLast ? dividerRef : undefined}
               isLast={isLast}

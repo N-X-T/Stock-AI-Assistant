@@ -1,10 +1,5 @@
 import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
-// import {
-//   ChatPromptTemplate,
-//   MessagesPlaceholder,
-//   PromptTemplate,
-// } from '@langchain/core/prompts';
-import { RunnableLambda, RunnableMap, RunnableSequence } from '@langchain/core/runnables';
+import { RunnableLambda, RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import type { StreamEvent } from '@langchain/core/tracers/log_stream';
 import eventEmitter from 'events';
@@ -12,7 +7,6 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { Embeddings } from '@langchain/core/embeddings';
 import logger from '../utils/logger';
 import { IterableReadableStream } from '@langchain/core/utils/stream';
-import fs from 'fs/promises';
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { OllamaEmbeddings } from '@langchain/ollama';
 import { tool } from "@langchain/core/tools";
@@ -21,7 +15,7 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { GraphRecursionError } from "@langchain/langgraph";
 import moment from 'moment';
 
-const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng.`;
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các function được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất`;
 
 const NewsTool = tool(
   async ({ query, ticker, date }: { query: string, ticker: string, date?: string }) => {
@@ -61,94 +55,6 @@ const NewsTool = tool(
     })
   }
 );
-
-// const PriceTool = tool(
-//   async ({ ticker }: { ticker: string }) => {
-//     let PriceDynamics = await fs.readFile(`./data/stock/${ticker}/summaryDynamicPrice/summary.txt`, "utf-8");
-//     return PriceDynamics;
-//   },
-//   {
-//     name: "price_function",
-//     description: "Lấy thông tin về biến động giá của một mã cổ phiếu cụ thể",
-//     schema: z.object({
-//       ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin")
-//     })
-//   }
-// );
-
-// const FinancialAnalysisTool = tool(
-//   async ({ ticker }: { ticker: string }) => {
-//     // let BCTC = await fs.readFile(`./data/stock/${ticker}/summary/summary.txt`, "utf-8");
-//     // return BCTC;
-//     const pathh = `./data/stock/${ticker}/raw`;
-
-//     const overview = await fs.readFile(`${pathh}/overview.json`, { encoding: "utf-8" });
-//     const stock_ratio = await fs.readFile(`${pathh}/stockratio.json`, { encoding: "utf-8" });
-//     const industryAvg = await fs.readFile(`${pathh}/industryAvg.json`, { encoding: "utf-8" });
-//     const price_volatility = await fs.readFile(`${pathh}/price_volatility.json`, { encoding: "utf-8" });
-//     const balance_sheet = await fs.readFile(`${pathh}/balancesheet.json`, { encoding: "utf-8" });
-//     const cash_flow = await fs.readFile(`${pathh}/cashflow.json`, { encoding: "utf-8" });
-//     const income_statement = await fs.readFile(`${pathh}/incomestatement.json`, { encoding: "utf-8" });
-//     const financial_ratio = await fs.readFile(`${pathh}/financialratio.json`, { encoding: "utf-8" });
-
-//     return `---
-// Overview
-// ${overview}
-// ---
-// Stock ratio
-// ${stock_ratio}
-// ---
-// Industry Average
-// ${industryAvg}
-// ---
-// History Price
-// ${price_volatility}
-// ---
-// Balance Sheet
-// ${balance_sheet}
-// ---
-// Income Statement
-// ${income_statement}
-// ---
-// Cash Flow
-// ${cash_flow}
-// ---
-// Financial Ratio
-// ${financial_ratio}
-// ---`;
-//   },
-//   {
-//     name: "financial_function",
-//     description: "Lấy thông tin về báo cáo tài chính của một mã cổ phiếu cụ thể",
-//     schema: z.object({
-//       ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin")
-//     })
-//   }
-// );
-
-// const MacroEcomomicTool = tool(
-//   async ({ ticker }: { ticker: string }) => {
-//     return `Chưa có thông tin về kinh tế vĩ mô cho mã ${ticker}`;
-//   },
-//   {
-//     name: "macroEconomic_function",
-//     description: "Lấy thông tin về kinh tế vĩ mô liên quan một mã cổ phiếu cụ thể",
-//     schema: z.object({
-//       ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin")
-//     })
-//   }
-// );
-
-// const CommonInfoTool = tool(
-//   async () => {
-//     let common = await fs.readFile(`./data/common/all/summary.txt`, "utf-8");
-//     return common;
-//   },
-//   {
-//     name: "common_info_function",
-//     description: "Lấy thông tin chung về tình hình toàn thị trường chứng khoán",
-//   }
-// );
 
 const overview = tool(
   async ({ ticker }: { ticker: string }) => {
@@ -306,8 +212,6 @@ const priceTool = tool(
   }
 );
 
-//const tools = [NewsTool, PriceTool, FinancialAnalysisTool, MacroEcomomicTool, CommonInfoTool];
-
 const tools = [
   NewsTool,
   //overview,
@@ -355,8 +259,7 @@ const handleStream = async (
       event.event === 'on_chain_end' &&
       event.name === 'FinalResponseGenerator'
     ) {
-      // emitter.emit('end', JSON.stringify(suggestions));
-      emitter.emit('end', "[]");
+      emitter.emit('end');
     }
   }
 };
@@ -373,6 +276,7 @@ const createStockChain = (llm: BaseChatModel) => {
     messageModifier: stockPrompt
   });
 
+  // For model with poor reasoning
   // return RunnableSequence.from([
   //   RunnableMap.from({
   //     chat_history: (input: BasicChainInput) => input.chat_history,
@@ -412,7 +316,7 @@ const createStockChain = (llm: BaseChatModel) => {
   //   runName: 'FinalResponseGenerator'
   // });
 
-  // Use mistral - large model
+  // For model with high reasoning: mistral-large, gpt-4o, gpt-o1
   return RunnableSequence.from([
     RunnableLambda.from(
       async (input: BasicChainInput) => {

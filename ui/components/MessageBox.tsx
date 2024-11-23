@@ -16,14 +16,11 @@ import Markdown from 'markdown-to-jsx';
 import Copy from './MessageActions/Copy';
 import Rewrite from './MessageActions/Rewrite';
 import MessageSources from './MessageSources';
-import SearchImages from './SearchImages';
-import SearchVideos from './SearchVideos';
 import { useSpeech } from 'react-text-to-speech';
 
 const MessageBox = ({
   message,
   messageIndex,
-  history,
   loading,
   dividerRef,
   isLast,
@@ -32,7 +29,6 @@ const MessageBox = ({
 }: {
   message: Message;
   messageIndex: number;
-  history: Message[];
   loading: boolean;
   dividerRef?: MutableRefObject<HTMLDivElement | null>;
   isLast: boolean;
@@ -116,9 +112,6 @@ const MessageBox = ({
               {loading && isLast ? null : (
                 <div className="flex flex-row items-center justify-between w-full text-black dark:text-white py-4 -mx-2">
                   <div className="flex flex-row items-center space-x-1">
-                    {/*  <button className="p-2 text-black/70 dark:text-white/70 rounded-xl hover:bg-light-secondary dark:hover:bg-dark-secondary transition duration-200 hover:text-black text-black dark:hover:text-white">
-                      <Share size={18} />
-                    </button> */}
                     <Rewrite rewrite={rewrite} messageId={message.messageId} />
                   </div>
                   <div className="flex flex-row items-center space-x-1">
@@ -182,16 +175,6 @@ const MessageBox = ({
                   </>
                 )}
             </div>
-          </div>
-          <div className="lg:sticky lg:top-20 flex flex-col items-center space-y-3 w-full lg:w-3/12 z-30 h-full pb-4">
-            <SearchImages
-              query={history[messageIndex - 1].content}
-              chat_history={history.slice(0, messageIndex - 1)}
-            />
-            <SearchVideos
-              chat_history={history.slice(0, messageIndex - 1)}
-              query={history[messageIndex - 1].content}
-            />
           </div>
         </div>
       )}

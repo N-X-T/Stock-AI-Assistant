@@ -9,11 +9,11 @@ export const messages = sqliteTable('messages', {
   metadata: text('metadata', {
     mode: 'json',
   }),
+  isDelete: integer('isDelete', { mode: "boolean" }).default(false),
 });
 
 export const chats = sqliteTable('chats', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   createdAt: text('createdAt').notNull(),
-  focusMode: text('focusMode').notNull(),
 });

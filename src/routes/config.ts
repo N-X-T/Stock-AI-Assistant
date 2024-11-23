@@ -3,14 +3,6 @@ import {
   getAvailableChatModelProviders,
   getAvailableEmbeddingModelProviders,
 } from '../lib/providers';
-import {
-  getGroqApiKey,
-  getOllamaApiEndpoint,
-  getAnthropicApiKey,
-  getOpenaiApiKey,
-  updateConfig,
-  getGeminiApiKey,
-} from '../config';
 import logger from '../utils/logger';
 
 const router = express.Router();
@@ -49,36 +41,11 @@ router.get('/', async (_, res) => {
       });
     }
 
-    config['openaiApiKey'] = getOpenaiApiKey();
-    config['ollamaApiUrl'] = getOllamaApiEndpoint();
-    config['anthropicApiKey'] = getAnthropicApiKey();
-    config['groqApiKey'] = getGroqApiKey();
-    config['geminiApiKey'] = getGeminiApiKey();
-
     res.status(200).json(config);
   } catch (err: any) {
     res.status(500).json({ message: 'An error has occurred.' });
     logger.error(`Error getting config: ${err.message}`);
   }
-});
-
-router.post('/', async (req, res) => {
-  const config = req.body;
-
-  const updatedConfig = {
-    API_KEYS: {
-      OPENAI: config.openaiApiKey,
-      GROQ: config.groqApiKey,
-      ANTHROPIC: config.anthropicApiKey,
-    },
-    API_ENDPOINTS: {
-      OLLAMA: config.ollamaApiUrl,
-    },
-  };
-
-  updateConfig(updatedConfig);
-
-  res.status(200).json({ message: 'Config updated' });
 });
 
 export default router;
