@@ -9,12 +9,20 @@ export const loadOpenAIChatModels = async () => {
 
   try {
     const chatModels = {
+      'gpt-4o-mini': {
+        displayName: 'GPT-4 omni mini',
+        model: new ChatOpenAI({
+          openAIApiKey,
+          modelName: 'gpt-4o-mini',
+          temperature: 0,
+        }),
+      },
       'gpt-3.5-turbo': {
         displayName: 'GPT-3.5 Turbo',
         model: new ChatOpenAI({
           openAIApiKey,
           modelName: 'gpt-3.5-turbo',
-          temperature: 0.7,
+          temperature: 0,
         }),
       },
       'gpt-4': {
@@ -22,7 +30,7 @@ export const loadOpenAIChatModels = async () => {
         model: new ChatOpenAI({
           openAIApiKey,
           modelName: 'gpt-4',
-          temperature: 0.7,
+          temperature: 0,
         }),
       },
       'gpt-4-turbo': {
@@ -30,7 +38,7 @@ export const loadOpenAIChatModels = async () => {
         model: new ChatOpenAI({
           openAIApiKey,
           modelName: 'gpt-4-turbo',
-          temperature: 0.7,
+          temperature: 0,
         }),
       },
       'gpt-4o': {
@@ -38,15 +46,7 @@ export const loadOpenAIChatModels = async () => {
         model: new ChatOpenAI({
           openAIApiKey,
           modelName: 'gpt-4o',
-          temperature: 0.7,
-        }),
-      },
-      'gpt-4o-mini': {
-        displayName: 'GPT-4 omni mini',
-        model: new ChatOpenAI({
-          openAIApiKey,
-          modelName: 'gpt-4o-mini',
-          temperature: 0.7,
+          temperature: 0,
         }),
       },
     };
