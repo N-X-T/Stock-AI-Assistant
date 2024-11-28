@@ -172,14 +172,22 @@ const useSocket = (
         }
       }, 10000);
 
+      let ping;
+
       ws.onopen = () => {
         clearTimeout(timeoutId);
         setIsWSReady(true);
         toast.success("Connected to the server!", { id: toastId, duration: 1000 });
+        ping = setInterval(() => {
+          ws.send(JSON.stringify({
+            type: "Ping"
+          }));
+        }, 30000);
       };
 
       ws.onerror = () => {
         clearTimeout(timeoutId);
+        clearInterval(ping);
         let seconds = 5;
         const reconnectId = setInterval(() => {
           toast.loading(`Reconnect in ${seconds}s...`, { id: toastId });
@@ -337,6 +345,9 @@ const ChatWindow = ({ id }: { id?: string }) => {
 
   const sendMessage = async (message: string, messageIdRewrite?: string) => {
     if (loading) return;
+    if (messages.length == 0) {
+      window.history.replaceState({ ...window.history.state, as: `/c/${chatId}`, url: `/c/${chatId}` }, '', `/c/${chatId}`);
+    }
     setLoading(true);
     setMessageAppeared(false);
 
