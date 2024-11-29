@@ -285,6 +285,9 @@ const ChatWindow = ({ id }: { id?: string }) => {
   const [isReady, setIsReady] = useState(false);
 
   const [isWSReady, setIsWSReady] = useState(false);
+
+  const [isAdvanceMode, setIsAdvanceMode] = useState(false);
+
   const ws = useSocket(
     process.env.NEXT_PUBLIC_WS_URL!,
     hasError,
@@ -360,6 +363,7 @@ const ChatWindow = ({ id }: { id?: string }) => {
     ws?.send(
       JSON.stringify({
         type: 'message',
+        isAdvanceMode: isAdvanceMode,
         message: {
           chatId: chatId!,
           messageId: messageId,
@@ -508,6 +512,8 @@ const ChatWindow = ({ id }: { id?: string }) => {
           <>
             <Navbar messages={messages} />
             <Chat
+              isAdvanceMode={isAdvanceMode}
+              setIsAdvanceMode={setIsAdvanceMode}
               loading={loading}
               messages={messages}
               sendMessage={sendMessage}
@@ -517,6 +523,8 @@ const ChatWindow = ({ id }: { id?: string }) => {
           </>
         ) : (
           <EmptyChat
+            isAdvanceMode={isAdvanceMode}
+            setIsAdvanceMode={setIsAdvanceMode}
             sendMessage={sendMessage}
           />
         )}

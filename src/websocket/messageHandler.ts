@@ -18,6 +18,7 @@ type Message = {
 type WSMessage = {
   message: Message;
   type: string;
+  isAdvanceMode: boolean;
 };
 
 const handleEmitterEvents = (
@@ -136,6 +137,7 @@ export const handleMessage = async (
     if (parsedWSMessage.type === 'message') {
       const emitter = handleWritingAssistant(
         parsedMessage.content,
+        parsedWSMessage.isAdvanceMode,
         history,
         llm,
         embeddings

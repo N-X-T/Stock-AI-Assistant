@@ -1,11 +1,16 @@
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
+import AdvanceToggle from './MessageInputActions/AdvanceMode';
 
 const EmptyChatMessageInput = ({
   sendMessage,
+  isAdvanceMode,
+  setIsAdvanceMode,
 }: {
   sendMessage: (message: string) => void;
+  isAdvanceMode: boolean;
+  setIsAdvanceMode: (enabled: boolean) => void;
 }) => {
   const [message, setMessage] = useState('');
 
@@ -62,6 +67,10 @@ const EmptyChatMessageInput = ({
           <div className="flex flex-row items-center space-x-4">
           </div>
           <div className="flex flex-row items-center space-x-1 sm:space-x-4">
+            <AdvanceToggle
+              isAdvanceMode={isAdvanceMode}
+              setIsAdvanceMode={setIsAdvanceMode}
+            />
             <button
               disabled={message.trim().length === 0}
               className="bg-[#24A0ED] text-white disabled:text-black/50 dark:disabled:text-white/50 disabled:bg-[#e0e0dc] dark:disabled:bg-[#ececec21] hover:bg-opacity-85 transition duration-100 rounded-full p-2"

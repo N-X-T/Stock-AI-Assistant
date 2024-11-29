@@ -1,5 +1,5 @@
 import { AIMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
-import { RunnableLambda, RunnableSequence } from '@langchain/core/runnables';
+import { RunnableLambda, RunnableMap, RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import type { StreamEvent } from '@langchain/core/tracers/log_stream';
 import eventEmitter from 'events';
@@ -13,16 +13,20 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { GraphRecursionError } from "@langchain/langgraph";
 import moment from 'moment';
 import { getNewsEndpoint } from '../config';
+import formatChatHistoryAsString from '../utils/formatHistory';
 
-const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các function được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất. Hôm nay là ${new Date().toISOString().substring(0, 10)}`;
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các function được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất. Ví dụ:
+- Khi người dùng hỏi có nên mua/bán/giữ cổ phiếu: Sử dụng các thông tin như phân tích kỹ thuật, phân tích cơ bản, các chỉ số để phân tích và đưa ra câu trả lời.
+- Khi người dùng hỏi tình hình thị trường chứng khoán Việt Nam: Có thể sử dụng thông tin từ các bài báo/tin tức để phân tích và đưa ra câu trả lời.
+Hôm nay là ${new Date().toISOString().substring(0, 10)}`;
 
 const NewsTool = tool(
-  async ({ query, ticker, date }: { query: string, ticker: string, date?: string }) => {
+  async ({ query, ticker, date }: { query: string, ticker?: string, date?: string }) => {
     const data = {
       "query": query,
       "top_k": 5,
       "filter": {
-        "symbol": ticker
+        "symbol": ticker == "" || ticker == void 0 ? void 0 : ticker
       }
     };
     const news = await post(getNewsEndpoint(), JSON.stringify(data));
@@ -30,10 +34,10 @@ const NewsTool = tool(
   },
   {
     name: "news_function",
-    description: "Truy xuất thông tin về tin tức liên quan tới một mã cổ phiếu cụ thể",
+    description: "Truy xuất thông tin về các bài báo/tin tức liên quan tới một mã cổ phiếu cụ thể",
     schema: z.object({
       query: z.string().describe("Câu truy vấn tin tức"),
-      ticker: z.string().describe("Mã cổ phiếu của công ty cần lấy thông tin tin tức"),
+      ticker: z.string().optional().describe("Mã cổ phiếu của công ty cần lấy thông tin tin tức"),
       //date: z.string().optional().describe("Ngày của tin tức định dạng YYYY-MM-DD")
     })
   }
@@ -262,88 +266,94 @@ type BasicChainInput = {
   query: string;
 };
 
-const createStockChain = (llm: BaseChatModel) => {
+const createStockChain = (llm: BaseChatModel, isAdvanceMode: boolean) => {
   const app = createReactAgent({
     llm,
     tools,
     messageModifier: stockPrompt
   });
 
-  // For model with poor reasoning
-  // return RunnableSequence.from([
-  //   RunnableMap.from({
-  //     chat_history: (input: BasicChainInput) => input.chat_history,
-  //     query: async (input: BasicChainInput) => {
-  //       const prompt = `Bạn là một chuyên gia tài chính, chứng khoán dày dạn kinh nghiệm. Nhiệm vụ của bạn là chỉ ra các bước thực hiện một cách ngắn gọn cho các tác vụ sau: ${input.query}`;
-  //       const CoT = await llm.invoke(prompt);
-  //       return `Thực hiện các bước sau sử dụng các default.API tôi đã cung cấp để lấy thông tin:\n${CoT.content}`;
-  //     }
-  //   }),
-  //   RunnableLambda.from(
-  //     async (input: BasicChainInput) => {
-  //       try {
-  //         const resp = await app.invoke(
-  //           {
-  //             messages: [
-  //               ...input.chat_history,
-  //               new HumanMessage(input.query)
-  //             ]
-  //           },
-  //           {
-  //             recursionLimit: RECURSION_LIMIT
-  //           }
-  //         );
-  //         return resp.messages[resp.messages.length - 1];
-  //       } catch (e) {
-  //         if (e instanceof GraphRecursionError) {
-  //           console.error(e.lc_error_code, `Query: ${input.query}`);
-  //           return new AIMessage("Hiện tại, tôi không đủ thông tin để trả lời câu hỏi của bạn!");
-  //         } else {
-  //           throw e;
-  //         }
-  //       }
-  //     }
-  //   ),
-  //   strParser
-  // ]).withConfig({
-  //   runName: 'FinalResponseGenerator'
-  // });
-
-  // For model with high reasoning: mistral-large, gpt-4o, gpt-o1
-  return RunnableSequence.from([
-    RunnableLambda.from(
-      async (input: BasicChainInput) => {
-        try {
-          const resp = await app.invoke(
-            {
-              messages: [
-                ...input.chat_history,
-                new HumanMessage(input.query)
-              ]
-            },
-            {
-              recursionLimit: RECURSION_LIMIT
+  if (isAdvanceMode) {
+    // For model with poor reasoning
+    return RunnableSequence.from([
+      RunnableMap.from({
+        chat_history: (input: BasicChainInput) => input.chat_history,
+        query: async (input: BasicChainInput) => {
+          const prompt = `Bạn là một chuyên gia tài chính, chứng khoán dày dạn kinh nghiệm. Bạn sẽ được cung cấp lịch sử cuộc trò chuyện của người dùng và câu hỏi tiếp theo, nhiệm vụ của bạn là chỉ ra các bước thực hiện cho tác vụ của câu hỏi tiếp theo của người dùng. Nếu đó không phải là 1 câu hỏi về chứng khoán/cổ phiếu chỉ cần trả về: no.\n\nLịch sử trò chuyện:\n${formatChatHistoryAsString(input.chat_history)}\nCâu hỏi tiếp theo: ${input.query}`;
+          const CoT = await llm.invoke(prompt);
+          if (CoT.content == "no")
+            return input.query;
+          else
+            return `Thực hiện các bước sau sử dụng các default.API tôi đã cung cấp để lấy thông tin:\n${CoT.content}`;
+        }
+      }),
+      RunnableLambda.from(
+        async (input: BasicChainInput) => {
+          try {
+            const resp = await app.invoke(
+              {
+                messages: [
+                  ...input.chat_history,
+                  new HumanMessage(input.query)
+                ]
+              },
+              {
+                recursionLimit: RECURSION_LIMIT
+              }
+            );
+            return resp.messages[resp.messages.length - 1];
+          } catch (e) {
+            if (e instanceof GraphRecursionError) {
+              console.error(e.lc_error_code, `Query: ${input.query}`);
+              return new AIMessage("Hiện tại, tôi không đủ thông tin để trả lời câu hỏi của bạn!");
+            } else {
+              throw e;
             }
-          );
-          return resp.messages[resp.messages.length - 1];
-        } catch (e) {
-          if (e instanceof GraphRecursionError) {
-            console.error(e.lc_error_code, `Query: ${input.query}`);
-            return new AIMessage("Hiện tại, tôi không đủ thông tin để trả lời câu hỏi của bạn!");
-          } else {
-            throw e;
           }
         }
-      }
-    ),
-    strParser
-  ]).withConfig({
-    runName: 'FinalResponseGenerator'
-  });
+      ),
+      strParser
+    ]).withConfig({
+      runName: 'FinalResponseGenerator'
+    });
+  } else {
+    // For model with high reasoning: mistral-large, gpt-4o, gpt-o1
+    return RunnableSequence.from([
+      RunnableLambda.from(
+        async (input: BasicChainInput) => {
+          try {
+            const resp = await app.invoke(
+              {
+                messages: [
+                  ...input.chat_history,
+                  new HumanMessage(input.query)
+                ]
+              },
+              {
+                recursionLimit: RECURSION_LIMIT
+              }
+            );
+            return resp.messages[resp.messages.length - 1];
+          } catch (e) {
+            if (e instanceof GraphRecursionError) {
+              console.error(e.lc_error_code, `Query: ${input.query}`);
+              return new AIMessage("Hiện tại, tôi không đủ thông tin để trả lời câu hỏi của bạn!");
+            } else {
+              throw e;
+            }
+          }
+        }
+      ),
+      strParser
+    ]).withConfig({
+      runName: 'FinalResponseGenerator'
+    });
+  }
 };
 
 const handleWritingAssistant = (
   query: string,
+  isAdvanceMode: boolean,
   history: BaseMessage[],
   llm: BaseChatModel,
   embeddings: Embeddings,
@@ -351,7 +361,7 @@ const handleWritingAssistant = (
   const emitter = new eventEmitter();
 
   try {
-    let stockChain = createStockChain(llm);
+    let stockChain = createStockChain(llm, isAdvanceMode);
 
     const stream = stockChain.streamEvents(
       {

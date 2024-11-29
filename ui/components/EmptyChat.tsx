@@ -1,9 +1,13 @@
 import EmptyChatMessageInput from './EmptyChatMessageInput';
 
 const EmptyChat = ({
-  sendMessage
+  sendMessage,
+  isAdvanceMode,
+  setIsAdvanceMode,
 }: {
   sendMessage: (message: string) => void;
+  isAdvanceMode: boolean;
+  setIsAdvanceMode: (enabled: boolean) => void;
 }) => {
   return (
     <div className="relative">
@@ -12,6 +16,8 @@ const EmptyChat = ({
           Ask financial here.
         </h2>
         <EmptyChatMessageInput
+          isAdvanceMode={isAdvanceMode}
+          setIsAdvanceMode={setIsAdvanceMode}
           sendMessage={sendMessage}
         />
       </div>
