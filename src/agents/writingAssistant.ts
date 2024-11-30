@@ -50,7 +50,7 @@ const overview = tool(
   },
   {
     name: "overview_function",
-    description: "Truy xuất thông tin chung về một cổ phiếu cụ thể",
+    description: "Truy xuất thông tin cơ bản về công ty của một cổ phiếu cụ thể: tên công ty, ngành, ...",
     schema: z.object({
       ticker: z.string().describe("Mã cổ phiếu")
     })
@@ -201,7 +201,7 @@ const priceTool = tool(
 
 const tools = [
   NewsTool,
-  //overview,
+  overview,
   stockratio,
   stock_same_industry,
   listTechnicalIndicator,
@@ -220,7 +220,7 @@ const strParser = new StringOutputParser();
 
 const get = async (url: string) => {
   try {
-    let res = await fetch(url);
+    let res = await fetch(url, { headers: { "accept-language": "vi" } });
     let body = await res.json();
     return JSON.stringify(body, (key, value) => (value === null ? undefined : value));
   } catch {
@@ -230,7 +230,7 @@ const get = async (url: string) => {
 
 const post = async (url: string, data: string) => {
   try {
-    let res = await fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: data });
+    let res = await fetch(url, { method: "POST", headers: { "accept-language": "vi", 'Content-Type': 'application/json' }, body: data });
     let body = await res.json();
     return body;
   } catch {
@@ -282,7 +282,7 @@ const createStockChain = (llm: BaseChatModel, isAdvanceMode: boolean) => {
           const prompt = `Bạn là một chuyên gia tài chính, chứng khoán dày dạn kinh nghiệm. Bạn sẽ được cung cấp lịch sử cuộc trò chuyện của người dùng và câu hỏi tiếp theo, nhiệm vụ của bạn là chỉ ra các bước thực hiện cho tác vụ của câu hỏi tiếp theo của người dùng. Nếu đó không phải là 1 câu hỏi về chứng khoán/cổ phiếu chỉ cần trả về: no.\n\nLịch sử trò chuyện:\n${formatChatHistoryAsString(input.chat_history)}\nCâu hỏi tiếp theo: ${input.query}`;
           const CoT = await llm.invoke(prompt);
           if (CoT.content == "no")
-            return input.query;
+            return `${input.query}\n\nNếu câu hỏi trong ngữ cảnh không thuộc về lĩnh vực chứng khoán/cổ phiếu tại Việt Nam chỉ cần trả về: Tôi là chatbot hỗ trợ tư vấn thị trường chứng khoán Việt Nam, câu hỏi của bạn thuộc lĩnh vực khác tôi xin phép không trả lời.`;
           else
             return `Thực hiện các bước sau sử dụng các default.API tôi đã cung cấp để lấy thông tin:\n${CoT.content}`;
         }
@@ -326,7 +326,7 @@ const createStockChain = (llm: BaseChatModel, isAdvanceMode: boolean) => {
               {
                 messages: [
                   ...input.chat_history,
-                  new HumanMessage(input.query)
+                  new HumanMessage(`${input.query}\n\nNếu câu hỏi trong ngữ cảnh không thuộc về lĩnh vực chứng khoán/cổ phiếu tại Việt Nam chỉ cần trả về: Tôi là chatbot hỗ trợ tư vấn thị trường chứng khoán Việt Nam, câu hỏi của bạn thuộc lĩnh vực khác tôi xin phép không trả lời.`)
                 ]
               },
               {
