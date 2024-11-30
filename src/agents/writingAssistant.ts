@@ -15,9 +15,7 @@ import moment from 'moment';
 import { getNewsEndpoint } from '../config';
 import formatChatHistoryAsString from '../utils/formatHistory';
 
-const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các function được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất. Ví dụ:
-- Khi người dùng hỏi có nên mua/bán/giữ cổ phiếu: Sử dụng các thông tin như phân tích kỹ thuật, phân tích cơ bản, các chỉ số để phân tích và đưa ra câu trả lời.
-- Khi người dùng hỏi tình hình thị trường chứng khoán Việt Nam: Có thể sử dụng thông tin từ các bài báo/tin tức để phân tích và đưa ra câu trả lời.
+const stockPrompt = `Bạn là một nhà phân tích tài chính dày dạn kinh nghiệm được giao nhiệm vụ trả lời các câu hỏi về tài chính, chứng khoán của người dùng. Kết hợp kiến thức sẵn có và các tool được cung cấp để lấy thông tin cho câu trả lời một cách tốt nhất. Đặc biệt: Khi nhắc tới thông tin giá của cổ phiếu, bạn cần sử dụng StockPriceFetcher tool để lấy thông tin về giá.
 Hôm nay là ${new Date().toISOString().substring(0, 10)}`;
 
 const NewsTool = tool(
@@ -190,8 +188,8 @@ const priceTool = tool(
     return res;
   },
   {
-    name: "prices_function",
-    description: "Lấy lịch sử giá của một mã cổ phiếu cụ thể",
+    name: "StockPriceFetcher",
+    description: "Truy xuất thông tin giá hiện tại và lịch sử của một cổ phiếu",
     schema: z.object({
       ticker: z.string().describe("Mã cổ phiếu"),
       //days: z.number().optional().describe("Số ngày trong quá khứ muốn lấy lịch sử giá. Ví dụ: 30, 90,...")
