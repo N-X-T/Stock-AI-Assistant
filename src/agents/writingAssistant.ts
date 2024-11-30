@@ -183,7 +183,7 @@ const financialratio = tool(
 
 const priceTool = tool(
   async ({ ticker, days }: { ticker: string, days?: number }) => {
-    const endHistoryDate = moment().unix();
+    const endHistoryDate = moment().add(3, 'days').unix();
     const res = await get(`https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term?ticker=${ticker}&type=stock&resolution=D&to=${endHistoryDate}&countBack=${days ? days : 30}`);
     return res;
   },
