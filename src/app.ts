@@ -10,6 +10,7 @@ import { getPort } from './config';
 import logger from './utils/logger';
 import cron from 'node-cron';
 import StockScoring from './cronjob/StockScoring';
+import MarketAnalysis from './cronjob/MarketAnalysis';
 
 const port = getPort();
 
@@ -48,4 +49,8 @@ cron.schedule('0 9 1 2,5,8,11 *', () => { // BCTC trễ nhất sau 1 tháng khi 
 
 cron.schedule('0 9 * * *', () => { // 9h hàng ngày
   StockScoring(false); // false == ShortTerm
+});
+
+cron.schedule('0 23 * * *', () => { // 23h hàng ngày
+  MarketAnalysis();
 });

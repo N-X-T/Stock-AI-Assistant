@@ -1,5 +1,6 @@
 'use client';
 
+import HomeDiscover from '@/components/Discover/Home';
 import StockDiscover from '@/components/Discover/Stock';
 import { cn } from '@/lib/utils';
 import { Earth, Home, Factory, CircleDollarSign } from 'lucide-react';
@@ -48,20 +49,7 @@ const DiscoverPage = () => {
                         <div>Stock</div>
                     </button>
                 </div>
-                {tab == 'home' && (<div className="pt-8 lg:pt-8">
-                    <img
-                        src="https://via.placeholder.com/800x400" // Replace with your image
-                        alt="Bloom Filters"
-                        className="w-full h-56 object-cover"
-                    />
-                    <div className="p-4">
-                        <h2 className="text-xl font-semibold mb-2">Example</h2>
-                        <p className="text-gray-400 text-sm">
-                            Example...
-                        </p>
-                        <div className="mt-4 text-teal-400 text-sm font-medium">Example</div>
-                    </div>
-                </div>)}
+                {tab == 'home' && <HomeDiscover />}
                 {tab == 'stock' && <StockDiscover />}
             </div>
         </div>

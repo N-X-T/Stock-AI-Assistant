@@ -286,8 +286,26 @@ const top_ticker = tool(
   }
 );
 
+const marketInfo = tool(
+  async () => {
+    const query = sql.raw(`SELECT * FROM MarketAnalysis ORDER BY id DESC LIMIT 1`);
+
+    const result = db.get<any>(query);
+
+    return JSON.stringify({
+      "Ngày cập nhật thông tin": result.creatAt,
+      "Nội dung": result.content
+    });
+  },
+  {
+    name: "market_info_function",
+    description: "Truy xuất thông tin tình hình thị trường chứng khoán Việt Nam",
+  }
+);
+
 const tools = [
   // general,
+  marketInfo,
   top_ticker,
   NewsTool,
   overview,

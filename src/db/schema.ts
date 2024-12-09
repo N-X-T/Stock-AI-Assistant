@@ -26,3 +26,9 @@ export const scoring = sqliteTable('scoring', {
   content: text('content').notNull(),
   creatAt: text('creatAt').notNull()
 });
+
+export const marketInfo = sqliteTable('MarketAnalysis', {
+  id: integer('id').primaryKey(),
+  content: text('content').notNull(),
+  creatAt: text('creatAt').notNull()
+});

@@ -4,6 +4,7 @@ import modelsRouter from './models';
 import suggestionsRouter from './suggestions';
 import chatsRouter from './chats';
 import topRouter from './toptickers';
+import marketRouter from './market';
 
 const router = express.Router();
 
@@ -12,5 +13,6 @@ router.use('/models', modelsRouter);
 router.use('/suggestions', suggestionsRouter);
 router.use('/chats', chatsRouter);
 router.use('/top_ticker', topRouter);
+router.use('/market', marketRouter);
 
 export default router;
