@@ -10,9 +10,8 @@ There are mainly 2 ways of installing With Docker, Without Docker. Using Docker 
 
 4. Rename the `.env.example` file to `.env` in root folder. For Docker setups, you need only fill in the following fields:
 
-   - `OPENAI`: Your OpenAI API key. **You only need to fill this if you wish to use OpenAI's models**.
-   - `GROQ`: Your Groq API key. **You only need to fill this if you wish to use Groq's hosted models**.(Optional)
-   - `ANTHROPIC`: Your Anthropic API key. **You only need to fill this if you wish to use Anthropic models**.(Optional)
+   - `OPENAI`: Your OpenAI API key. **(Required)**: For Chatbot
+   - `MistralAI`: Your MistralAI API key. **(Required)**. For Analysis: Top Stock, Market, Sector
    - `SIMILARITY_MEASURE`: The similarity measure to use (This is filled by default; you can leave it as is if you are unsure about it.)
 
 5. Ensure you are in the directory containing the `docker-compose.yaml` file and execute:
@@ -21,9 +20,9 @@ There are mainly 2 ways of installing With Docker, Without Docker. Using Docker 
    docker compose up -d
    ```
 
-6. Wait a few minutes for the setup to complete. You can access Perplexica at http://localhost:3000 in your web browser.
+6. Wait a few minutes for the setup to complete. You can access at http://localhost:3000 in your web browser.
 
-**Note**: After the containers are built, you can start Perplexica directly from Docker without having to open a terminal.
+**Note**: After the containers are built, you can start directly from Docker without having to open a terminal.
 
 ### Non-Docker Installation
 
