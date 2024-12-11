@@ -401,7 +401,7 @@ const StockScoring = async (isLongTerm: boolean) => {
                         content: resp.messages[resp.messages.length - 1].content,
                         creatAt: new Date().toISOString()
                     });
-                console.log(`Waiting 61s`);
+                console.log(`Stock Scoring, Waiting 61s`);
                 await delay(61000);
             } catch (e) {
                 console.error(e);

@@ -190,11 +190,11 @@ const useSocket = (
         clearInterval(ping);
         let seconds = 5;
         const reconnectId = setInterval(() => {
-          toast.loading(`Reconnect in ${seconds}s...`, { id: toastId });
+          toast.loading(`Reconnect in ${seconds}s...`, { id: toastId, duration: 1000 });
           if (seconds == 0) {
             clearInterval(reconnectId);
-            toast.dismiss(toastId);
-            setError(true);
+            // toast.dismiss(toastId);
+            setTimeout(() => { setError(true); }, 1000);
           }
           else seconds -= 1;
         }, 1000);
@@ -213,11 +213,11 @@ const useSocket = (
     } catch {
       let seconds = 5;
       const reconnectId = setInterval(() => {
-        toast.loading(`Reconnect in ${seconds}s...`, { id: toastId });
+        toast.loading(`Reconnect in ${seconds}s...`, { id: toastId, duration: 1000 });
         if (seconds == 0) {
           clearInterval(reconnectId);
-          toast.dismiss(toastId);
-          setError(true);
+          //toast.dismiss(toastId);
+          setTimeout(() => { setError(true); }, 1000);
         }
         else seconds -= 1;
       }, 1000);

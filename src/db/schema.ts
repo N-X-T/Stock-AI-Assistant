@@ -32,3 +32,16 @@ export const marketInfo = sqliteTable('MarketAnalysis', {
   content: text('content').notNull(),
   creatAt: text('creatAt').notNull()
 });
+
+export const sectorInfo = sqliteTable('SectorAnalysis', {
+  id: integer('id').primaryKey(),
+  indCode: text('indCode').notNull(),
+  indName: text('indName').notNull(),
+  indMarketCap: real('indMarketCap').notNull(),
+  indIndex: real('indIndex').notNull(),
+  indIndexChgPct: real('indIndexChgPct').notNull(),
+  indQuantity: real('indQuantity').notNull(),
+  indTradedValue: real('indTradedValue').notNull(),
+  content: text('content').notNull(),
+  creatAt: text('creatAt').notNull()
+});

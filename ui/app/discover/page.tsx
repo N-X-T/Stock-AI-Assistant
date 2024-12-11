@@ -1,6 +1,7 @@
 'use client';
 
 import HomeDiscover from '@/components/Discover/Home';
+import SectorDiscover from '@/components/Discover/Sector';
 import StockDiscover from '@/components/Discover/Stock';
 import { cn } from '@/lib/utils';
 import { Earth, Home, Factory, CircleDollarSign } from 'lucide-react';
@@ -50,6 +51,7 @@ const DiscoverPage = () => {
                     </button>
                 </div>
                 {tab == 'home' && <HomeDiscover />}
+                {tab == 'sector' && <SectorDiscover />}
                 {tab == 'stock' && <StockDiscover />}
             </div>
         </div>

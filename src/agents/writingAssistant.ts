@@ -256,8 +256,11 @@ const priceTool = tool(
 const top_ticker = tool(
   async ({ number, target }: { number?: number, target?: string }) => {
     if (!number) number = 5;
-    if (!target || (target != 'LongTerm' && target != 'ShortTerm')) target = 'LongTerm';
-
+    if (!target || (target.toLowerCase() != 'longterm' && target.toLowerCase() != 'shortterm')) target = 'LongTerm';
+    switch (target.toLowerCase()) {
+      case "longterm": target = 'LongTerm';
+      case "shortterm": target = 'ShortTerm';
+    }
     const query = sql.raw(`SELECT symbol,type,creatAt  FROM scoring
       WHERE creatAt IN (SELECT MAX(creatAt)
                           FROM scoring

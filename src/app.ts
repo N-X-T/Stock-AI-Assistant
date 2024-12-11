@@ -11,6 +11,7 @@ import logger from './utils/logger';
 import cron from 'node-cron';
 import StockScoring from './cronjob/StockScoring';
 import MarketAnalysis from './cronjob/MarketAnalysis';
+import SectorAnalysis from './cronjob/SectorAnalysis';
 
 const port = getPort();
 
@@ -53,4 +54,8 @@ cron.schedule('0 9 * * *', () => { // 9h hàng ngày
 
 cron.schedule('0 23 * * *', () => { // 23h hàng ngày
   MarketAnalysis();
+});
+
+cron.schedule('10 23 * * *', () => { // 23h10 hàng ngày
+  SectorAnalysis();
 });

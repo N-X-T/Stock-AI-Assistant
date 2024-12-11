@@ -39,15 +39,14 @@ const HomeDiscover = () => {
 
     return (
         <div className="pt-8 lg:pt-8 space-y-4">
-            {info.map((e) => (<>
-                <div className="p-4 bg-light-primary dark:bg-dark-secondary shadow-md rounded-lg">
+            {info.map((e) => (
+                <div key={e.id} className="p-4 bg-light-primary dark:bg-dark-secondary shadow-md rounded-lg">
                     <h2 className="flex justify-between text-xl font-semibold mb-2 ju"
                         onClick={() => handleRowClick(e.id)}>
                         Tình hình thị trường ngày {new Date(e.creatAt).toLocaleDateString("vi-VN")}<ChevronDown />
                     </h2>
                     {selectedItem === e.id && (<Markdown>{e.content}</Markdown>)}
                 </div>
-            </>
             ))}
         </div>
     );
